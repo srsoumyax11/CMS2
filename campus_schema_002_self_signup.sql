@@ -34,7 +34,7 @@ CREATE TABLE role_approval_rules (
 
 -- 3. A user asks for a role
 CREATE TABLE role_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id),
   role_id uuid NOT NULL REFERENCES roles(id),
   claimed_code text,                               -- admission no or employee code
@@ -56,7 +56,7 @@ CREATE INDEX idx_role_requests_queue ON role_requests (role_id, created_at) WHER
 
 -- 4. Parent flow: link to a child. Child confirms, or an admin approves.
 CREATE TABLE guardian_link_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   guardian_user_id uuid NOT NULL REFERENCES users(id),
   student_id uuid NOT NULL REFERENCES students(user_id),
   relation text NOT NULL CHECK (relation IN ('father','mother','guardian','other')),

@@ -27,11 +27,7 @@ CREATE SCHEMA IF NOT EXISTS campus;
 SET search_path = campus, public;
 
 -- ---------- 0. Shared building blocks --------------------------------
-CREATE DOMAIN pk_uuid AS uuid NOT NULL DEFAULT gen_random_uuid();
-CREATE DOMAIN amount_t AS numeric(12,2) CHECK (VALUE >= 0);
-CREATE DOMAIN phone_t AS text CHECK (VALUE ~ '^\+?[0-9]{8,15}$');
-CREATE DOMAIN lat_t AS numeric(9,6) CHECK (VALUE BETWEEN -90 AND 90);
-CREATE DOMAIN lng_t AS numeric(9,6) CHECK (VALUE BETWEEN -180 AND 180);
+-- Standard native PostgreSQL data types for ORM compatibility
 
 -- Column templates (copied with LIKE, dropped at the end)
 CREATE TABLE _tpl_ts (
@@ -44,16 +40,16 @@ CREATE TABLE _tpl_sd (
   deleted_at timestamptz
 );
 
-CREATE FUNCTION set_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN NEW.updated_at := now(); RETURN NEW; END $$;
 
 -- ---------- 1. Identity and access (RBAC) ----------------------------
 CREATE TABLE users (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_code text NOT NULL UNIQUE,              -- student ID or employee ID
   full_name text NOT NULL,
-  email citext,
-  phone phone_t,
+  email text,
+  phone text,
   password_hash text,
   status text NOT NULL DEFAULT 'active'
     CHECK (status IN ('active','frozen','archived')),
@@ -69,7 +65,7 @@ CREATE UNIQUE INDEX uq_users_email ON users (email) WHERE email IS NOT NULL AND 
 CREATE UNIQUE INDEX uq_users_phone ON users (phone) WHERE phone IS NOT NULL AND deleted_at IS NULL;
 
 CREATE TABLE roles (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   code text NOT NULL UNIQUE,
   name text NOT NULL,
   description text,
@@ -77,7 +73,7 @@ CREATE TABLE roles (
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE permissions (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   code text NOT NULL UNIQUE,                   -- e.g. marks.submit
   description text
 );
@@ -95,7 +91,7 @@ CREATE TABLE role_conflicts (
   CHECK (role_a < role_b)
 );
 CREATE TABLE user_roles (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id),
   role_id uuid NOT NULL REFERENCES roles(id),
   scope_type text NOT NULL DEFAULT 'college'
@@ -114,7 +110,7 @@ CREATE UNIQUE INDEX uq_user_roles_active ON user_roles
   WHERE revoked_at IS NULL;
 
 CREATE TABLE user_devices (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id),
   device_fingerprint text NOT NULL,
   device_name text,
@@ -125,7 +121,7 @@ CREATE TABLE user_devices (
   UNIQUE (user_id, device_fingerprint)
 );
 CREATE TABLE auth_sessions (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id),
   device_id uuid REFERENCES user_devices(id),
   refresh_token_hash text NOT NULL UNIQUE,
@@ -135,14 +131,14 @@ CREATE TABLE auth_sessions (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE backup_codes (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id),
   code_hash text NOT NULL,
   used_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE otp_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES users(id),
   channel text NOT NULL CHECK (channel IN ('sms','email')),
   target text NOT NULL,
@@ -154,7 +150,7 @@ CREATE TABLE otp_requests (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE login_events (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES users(id),
   device_id uuid REFERENCES user_devices(id),
   ip_address inet,
@@ -165,7 +161,7 @@ CREATE TABLE login_events (
 
 -- ---------- 2. Files (all uploads are metadata only) ------------------
 CREATE TABLE files (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   storage_key text NOT NULL UNIQUE,
   original_name text NOT NULL,
   mime_type text NOT NULL,
@@ -184,14 +180,14 @@ CREATE TABLE pin_codes (
   state text NOT NULL
 );
 CREATE TABLE departments (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   code text NOT NULL UNIQUE,
   name text NOT NULL,
   head_user_id uuid REFERENCES users(id),
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE academic_years (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   label text NOT NULL UNIQUE,                  -- 2026-27
   start_date date NOT NULL,
   end_date date NOT NULL,
@@ -200,7 +196,7 @@ CREATE TABLE academic_years (
 );
 CREATE UNIQUE INDEX uq_one_current_year ON academic_years (is_current) WHERE is_current;
 CREATE TABLE terms (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   academic_year_id uuid NOT NULL REFERENCES academic_years(id),
   name text NOT NULL,                          -- Odd, Even
   start_date date NOT NULL,
@@ -209,7 +205,7 @@ CREATE TABLE terms (
   CHECK (end_date > start_date)
 );
 CREATE TABLE courses (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   department_id uuid NOT NULL REFERENCES departments(id),
   code text NOT NULL UNIQUE,                   -- BTECH-CSE
   name text NOT NULL,
@@ -218,14 +214,14 @@ CREATE TABLE courses (
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE batches (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   course_id uuid NOT NULL REFERENCES courses(id),
   admission_year_id uuid NOT NULL REFERENCES academic_years(id),
   name text NOT NULL,
   UNIQUE (course_id, admission_year_id, name)
 );
 CREATE TABLE sections (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   batch_id uuid NOT NULL REFERENCES batches(id),
   name text NOT NULL,
   UNIQUE (batch_id, name)
@@ -252,7 +248,7 @@ CREATE TABLE students (
 );
 -- Branch or batch change keeps old links
 CREATE TABLE student_batch_history (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   batch_id uuid NOT NULL REFERENCES batches(id),
   section_id uuid REFERENCES sections(id),
@@ -263,7 +259,7 @@ CREATE TABLE student_batch_history (
   EXCLUDE USING gist (student_id WITH =, daterange(from_date, to_date, '[]') WITH &&)
 );
 CREATE TABLE student_status_history (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   from_status text,
   to_status text NOT NULL,
@@ -305,7 +301,7 @@ CREATE TABLE guardian_consents (
   FOREIGN KEY (student_id, guardian_id) REFERENCES student_guardians(student_id, guardian_id)
 );
 CREATE TABLE addresses (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id),
   kind text NOT NULL CHECK (kind IN ('permanent','current')),
   line1 text NOT NULL,
@@ -314,16 +310,16 @@ CREATE TABLE addresses (
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE user_emergency_contacts (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id),
   contact_name text NOT NULL,
-  phone phone_t NOT NULL,
+  phone text NOT NULL,
   relation text NOT NULL,
   sort_order smallint NOT NULL DEFAULT 1,
   UNIQUE (user_id, sort_order)
 );
 CREATE TABLE name_correction_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   old_name text NOT NULL,
   new_name text NOT NULL,
@@ -334,7 +330,7 @@ CREATE TABLE name_correction_requests (
   LIKE _tpl_ts INCLUDING DEFAULTS
 );
 CREATE TABLE mentor_assignments (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   mentor_id uuid NOT NULL REFERENCES staff(user_id),
   from_date date NOT NULL DEFAULT current_date,
@@ -342,7 +338,7 @@ CREATE TABLE mentor_assignments (
 );
 CREATE UNIQUE INDEX uq_one_active_mentor ON mentor_assignments (student_id) WHERE to_date IS NULL;
 CREATE TABLE mentor_notes (                      -- private to the mentor
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   mentor_id uuid NOT NULL REFERENCES staff(user_id),
   student_id uuid NOT NULL REFERENCES students(user_id),
   meeting_on date NOT NULL,
@@ -352,7 +348,7 @@ CREATE TABLE mentor_notes (                      -- private to the mentor
 
 -- Admission
 CREATE TABLE admission_applications (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   applicant_user_id uuid NOT NULL REFERENCES users(id),
   course_id uuid NOT NULL REFERENCES courses(id),
   academic_year_id uuid NOT NULL REFERENCES academic_years(id),
@@ -365,7 +361,7 @@ CREATE TABLE admission_applications (
   UNIQUE (applicant_user_id, course_id, academic_year_id)
 );
 CREATE TABLE application_documents (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   application_id uuid NOT NULL REFERENCES admission_applications(id),
   doc_kind text NOT NULL,                      -- marksheet, id proof, photo
   file_id uuid NOT NULL REFERENCES files(id),
@@ -378,21 +374,21 @@ CREATE TABLE application_documents (
 
 -- ---------- 5. Places ---------------------------------------------------
 CREATE TABLE locations (                         -- generic place tree for map, assets, tickets
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   parent_id uuid REFERENCES locations(id),
   kind text NOT NULL CHECK (kind IN ('campus','building','floor','room','hostel','hostel_room','outdoor')),
   name text NOT NULL,
-  latitude lat_t,
-  longitude lng_t,
+  latitude numeric(9,6),
+  longitude numeric(9,6),
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE buildings (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL UNIQUE,
   location_id uuid REFERENCES locations(id)
 );
 CREATE TABLE rooms (                             -- classrooms and labs
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   building_id uuid NOT NULL REFERENCES buildings(id),
   room_no text NOT NULL,
   room_type text NOT NULL CHECK (room_type IN ('classroom','lab','hall','seminar')),
@@ -402,20 +398,20 @@ CREATE TABLE rooms (                             -- classrooms and labs
   UNIQUE (building_id, room_no)
 );
 CREATE TABLE vendors (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL,
   kind text NOT NULL CHECK (kind IN ('mess','bus','canteen','repair','supplier','other')),
-  contact_phone phone_t,
-  email citext,
+  contact_phone text,
+  email text,
   is_active boolean NOT NULL DEFAULT true,
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE vendor_contracts (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   vendor_id uuid NOT NULL REFERENCES vendors(id),
   starts_on date NOT NULL,
   ends_on date NOT NULL,
-  contract_value amount_t NOT NULL,
+  contract_value numeric(12,2) NOT NULL,
   payment_due_day smallint CHECK (payment_due_day BETWEEN 1 AND 31),
   file_id uuid REFERENCES files(id),
   CHECK (ends_on > starts_on)
@@ -423,7 +419,7 @@ CREATE TABLE vendor_contracts (
 
 -- ---------- 6. Academics ------------------------------------------------
 CREATE TABLE subjects (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   code text NOT NULL UNIQUE,
   name text NOT NULL,
   credits numeric(3,1) NOT NULL CHECK (credits >= 0),
@@ -438,7 +434,7 @@ CREATE TABLE course_subjects (
   PRIMARY KEY (course_id, subject_id)
 );
 CREATE TABLE syllabus_versions (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   subject_id uuid NOT NULL REFERENCES subjects(id),
   version_no integer NOT NULL,
   file_id uuid NOT NULL REFERENCES files(id),
@@ -446,7 +442,7 @@ CREATE TABLE syllabus_versions (
   UNIQUE (subject_id, version_no)
 );
 CREATE TABLE periods (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   period_no smallint NOT NULL UNIQUE,
   start_time time NOT NULL,
   end_time time NOT NULL,
@@ -454,7 +450,7 @@ CREATE TABLE periods (
 );
 -- Who teaches which subject to which section in a term
 CREATE TABLE subject_offerings (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   subject_id uuid NOT NULL REFERENCES subjects(id),
   term_id uuid NOT NULL REFERENCES terms(id),
   section_id uuid NOT NULL REFERENCES sections(id),
@@ -463,7 +459,7 @@ CREATE TABLE subject_offerings (
   UNIQUE (subject_id, term_id, section_id)
 );
 CREATE TABLE timetable_entries (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   offering_id uuid NOT NULL REFERENCES subject_offerings(id),
   room_id uuid NOT NULL REFERENCES rooms(id),
   day_of_week smallint NOT NULL CHECK (day_of_week BETWEEN 1 AND 7),
@@ -503,14 +499,14 @@ CREATE TABLE holidays (
   name text NOT NULL
 );
 CREATE TABLE course_materials (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   offering_id uuid NOT NULL REFERENCES subject_offerings(id),
   title text NOT NULL,
   uploaded_by uuid NOT NULL REFERENCES staff(user_id),
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE material_versions (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   material_id uuid NOT NULL REFERENCES course_materials(id),
   version_no integer NOT NULL,
   file_id uuid NOT NULL REFERENCES files(id),
@@ -518,7 +514,7 @@ CREATE TABLE material_versions (
   UNIQUE (material_id, version_no)
 );
 CREATE TABLE assignments (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   offering_id uuid NOT NULL REFERENCES subject_offerings(id),
   title text NOT NULL,
   description text,
@@ -528,7 +524,7 @@ CREATE TABLE assignments (
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE assignment_submissions (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   assignment_id uuid NOT NULL REFERENCES assignments(id),
   student_id uuid NOT NULL REFERENCES students(user_id),
   file_id uuid NOT NULL REFERENCES files(id),
@@ -543,7 +539,7 @@ CREATE TABLE assignment_submissions (
 
 -- ---------- 7. Attendance and leave ------------------------------------
 CREATE TABLE class_sessions (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   offering_id uuid NOT NULL REFERENCES subject_offerings(id),
   session_date date NOT NULL,
   period_id uuid NOT NULL REFERENCES periods(id),
@@ -553,7 +549,7 @@ CREATE TABLE class_sessions (
   UNIQUE (offering_id, session_date, period_id)
 );
 CREATE TABLE attendance_codes (                  -- rotating QR or short code
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   session_id uuid NOT NULL REFERENCES class_sessions(id),
   code_hash text NOT NULL,
   expires_at timestamptz NOT NULL
@@ -568,7 +564,7 @@ CREATE TABLE attendance_records (
   PRIMARY KEY (session_id, student_id)
 );
 CREATE TABLE attendance_disputes (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   session_id uuid NOT NULL,
   student_id uuid NOT NULL,
   reason text NOT NULL,
@@ -580,7 +576,7 @@ CREATE TABLE attendance_disputes (
   UNIQUE (session_id, student_id)
 );
 CREATE TABLE attendance_rules (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   course_id uuid REFERENCES courses(id),         -- NULL = college default
   min_percent numeric(5,2) NOT NULL CHECK (min_percent BETWEEN 0 AND 100),
   effective_from date NOT NULL
@@ -588,13 +584,13 @@ CREATE TABLE attendance_rules (
 CREATE UNIQUE INDEX uq_attendance_rule ON attendance_rules
   (COALESCE(course_id, '00000000-0000-0000-0000-000000000000'), effective_from);
 CREATE TABLE leave_types (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   code text NOT NULL UNIQUE,                     -- medical, event, casual, duty
   name text NOT NULL,
   applies_to text NOT NULL CHECK (applies_to IN ('student','staff','both'))
 );
 CREATE TABLE leave_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   requester_id uuid NOT NULL REFERENCES users(id),
   leave_type_id uuid NOT NULL REFERENCES leave_types(id),
   from_date date NOT NULL,
@@ -612,7 +608,7 @@ CREATE TABLE leave_requests (
 
 -- ---------- 8. Exams and results ---------------------------------------
 CREATE TABLE exams (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   term_id uuid NOT NULL REFERENCES terms(id),
   name text NOT NULL,
   kind text NOT NULL CHECK (kind IN ('internal','mid','end','supplementary')),
@@ -624,7 +620,7 @@ CREATE TABLE exams (
   CHECK (ends_on >= starts_on)
 );
 CREATE TABLE exam_papers (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   exam_id uuid NOT NULL REFERENCES exams(id),
   subject_id uuid NOT NULL REFERENCES subjects(id),
   exam_date date NOT NULL,
@@ -635,7 +631,7 @@ CREATE TABLE exam_papers (
   UNIQUE (exam_id, subject_id)
 );
 CREATE TABLE exam_duties (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   exam_paper_id uuid NOT NULL REFERENCES exam_papers(id),
   staff_id uuid NOT NULL REFERENCES staff(user_id),
   room_id uuid NOT NULL REFERENCES rooms(id),
@@ -643,7 +639,7 @@ CREATE TABLE exam_duties (
   UNIQUE (exam_paper_id, staff_id)
 );
 CREATE TABLE mark_entries (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   exam_paper_id uuid NOT NULL REFERENCES exam_papers(id),
   student_id uuid NOT NULL REFERENCES students(user_id),
   marks numeric(6,2) CHECK (marks >= 0),
@@ -656,7 +652,7 @@ CREATE TABLE mark_entries (
   CHECK (NOT (is_absent AND marks IS NOT NULL))
 );
 CREATE TABLE mark_change_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   mark_entry_id uuid NOT NULL REFERENCES mark_entries(id),
   old_marks numeric(6,2),
   new_marks numeric(6,2) NOT NULL CHECK (new_marks >= 0),
@@ -669,7 +665,7 @@ CREATE TABLE mark_change_requests (
   CHECK (approved_by IS DISTINCT FROM requested_by)   -- four-eyes rule
 );
 CREATE TABLE recheck_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   mark_entry_id uuid NOT NULL REFERENCES mark_entries(id),
   student_id uuid NOT NULL REFERENCES students(user_id),
   reason text,
@@ -684,7 +680,7 @@ CREATE TABLE recheck_requests (
 
 -- ---------- 9. Hostel ----------------------------------------------------
 CREATE TABLE hostels (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL UNIQUE,
   location_id uuid REFERENCES locations(id),
   LIKE _tpl_sd INCLUDING DEFAULTS
@@ -698,7 +694,7 @@ CREATE TABLE hostel_wardens (
   PRIMARY KEY (hostel_id, staff_id, from_date)
 );
 CREATE TABLE hostel_rooms (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   hostel_id uuid NOT NULL REFERENCES hostels(id),
   floor_no smallint NOT NULL,
   room_no text NOT NULL,
@@ -707,14 +703,14 @@ CREATE TABLE hostel_rooms (
   UNIQUE (hostel_id, room_no)
 );
 CREATE TABLE beds (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   hostel_room_id uuid NOT NULL REFERENCES hostel_rooms(id),
   bed_no smallint NOT NULL,
   is_usable boolean NOT NULL DEFAULT true,
   UNIQUE (hostel_room_id, bed_no)
 );
 CREATE TABLE bed_allocations (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   bed_id uuid NOT NULL REFERENCES beds(id),
   student_id uuid NOT NULL REFERENCES students(user_id),
   from_date date NOT NULL DEFAULT current_date,
@@ -725,7 +721,7 @@ CREATE TABLE bed_allocations (
 CREATE UNIQUE INDEX uq_bed_one_active ON bed_allocations (bed_id) WHERE to_date IS NULL;
 CREATE UNIQUE INDEX uq_student_one_bed ON bed_allocations (student_id) WHERE to_date IS NULL;
 CREATE TABLE room_change_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   requested_hostel_room_id uuid REFERENCES hostel_rooms(id),
   reason text NOT NULL,
@@ -735,7 +731,7 @@ CREATE TABLE room_change_requests (
   LIKE _tpl_ts INCLUDING DEFAULTS
 );
 CREATE TABLE outpass_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   reason text NOT NULL,
   destination text NOT NULL,
@@ -750,7 +746,7 @@ CREATE TABLE outpass_requests (
   CHECK (expected_return_at > out_at)
 );
 CREATE TABLE outpass_events (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   outpass_id uuid NOT NULL REFERENCES outpass_requests(id),
   event_kind text NOT NULL CHECK (event_kind IN ('out','in')),
   occurred_at timestamptz NOT NULL DEFAULT now(),
@@ -758,7 +754,7 @@ CREATE TABLE outpass_events (
   recorded_by uuid REFERENCES users(id)
 );
 CREATE TABLE dishes (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL UNIQUE
 );
 CREATE TABLE mess_menu_entries (
@@ -769,7 +765,7 @@ CREATE TABLE mess_menu_entries (
   PRIMARY KEY (hostel_id, menu_date, meal_type, dish_id)
 );
 CREATE TABLE mess_feedback (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   hostel_id uuid NOT NULL REFERENCES hostels(id),
   menu_date date NOT NULL,
@@ -780,7 +776,7 @@ CREATE TABLE mess_feedback (
   UNIQUE (student_id, hostel_id, menu_date, meal_type)
 );
 CREATE TABLE mess_hygiene_checks (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   hostel_id uuid NOT NULL REFERENCES hostels(id),
   check_date date NOT NULL,
   checked_by uuid NOT NULL REFERENCES users(id),
@@ -789,10 +785,10 @@ CREATE TABLE mess_hygiene_checks (
   UNIQUE (hostel_id, check_date)
 );
 CREATE TABLE visitors (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   host_user_id uuid NOT NULL REFERENCES users(id),
   visitor_name text NOT NULL,
-  visitor_phone phone_t,
+  visitor_phone text,
   purpose text,
   pass_code_hash text NOT NULL,
   valid_from timestamptz NOT NULL,
@@ -804,7 +800,7 @@ CREATE TABLE visitors (
   CHECK (valid_until > valid_from)
 );
 CREATE TABLE lost_found_items (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   kind text NOT NULL CHECK (kind IN ('lost','found')),
   reported_by uuid NOT NULL REFERENCES users(id),
   title text NOT NULL,
@@ -815,7 +811,7 @@ CREATE TABLE lost_found_items (
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE lost_found_claims (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   item_id uuid NOT NULL REFERENCES lost_found_items(id),
   claimant_id uuid NOT NULL REFERENCES users(id),
   proof_description text NOT NULL,               -- claimer must describe the item
@@ -828,17 +824,17 @@ CREATE TABLE lost_found_claims (
 
 -- ---------- 10. Assets, tickets and complaints --------------------------
 CREATE TABLE asset_categories (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL UNIQUE
 );
 CREATE TABLE assets (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   asset_tag text NOT NULL UNIQUE,                -- printed on the QR sticker
   category_id uuid NOT NULL REFERENCES asset_categories(id),
   name text NOT NULL,
   serial_no text,
   purchased_on date,
-  purchase_cost amount_t,
+  purchase_cost numeric(12,2),
   vendor_id uuid REFERENCES vendors(id),
   status text NOT NULL DEFAULT 'in_use' CHECK (status IN ('in_use','in_store','repair','lost','disposed')),
   item_condition text NOT NULL DEFAULT 'good' CHECK (item_condition IN ('new','good','fair','poor')),
@@ -846,7 +842,7 @@ CREATE TABLE assets (
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE asset_assignments (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   asset_id uuid NOT NULL REFERENCES assets(id),
   user_id uuid NOT NULL REFERENCES users(id),
   issued_by uuid NOT NULL REFERENCES users(id),
@@ -855,26 +851,26 @@ CREATE TABLE asset_assignments (
 );
 CREATE UNIQUE INDEX uq_asset_one_holder ON asset_assignments (asset_id) WHERE returned_at IS NULL;
 CREATE TABLE asset_damage_reports (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   asset_id uuid NOT NULL REFERENCES assets(id),
   reported_by uuid NOT NULL REFERENCES users(id),
   description text NOT NULL,
   photo_file_id uuid REFERENCES files(id),
   charged_user_id uuid REFERENCES users(id),
-  charge_amount amount_t,
+  charge_amount numeric(12,2),
   status text NOT NULL DEFAULT 'open' CHECK (status IN ('open','charged','waived','closed')),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE SEQUENCE ticket_no_seq;
 CREATE TABLE ticket_categories (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   code text NOT NULL UNIQUE,                     -- electrical, plumbing, mess, wifi, ragging
   name text NOT NULL,
   default_sla_hours integer NOT NULL CHECK (default_sla_hours > 0),
   owner_role_id uuid REFERENCES roles(id)
 );
 CREATE TABLE tickets (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   ticket_no text NOT NULL UNIQUE DEFAULT ('TKT-' || lpad(nextval('ticket_no_seq')::text, 8, '0')),
   category_id uuid NOT NULL REFERENCES ticket_categories(id),
   raised_by uuid NOT NULL REFERENCES users(id),
@@ -893,7 +889,7 @@ CREATE TABLE tickets (
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE escalation_rules (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   category_id uuid NOT NULL REFERENCES ticket_categories(id),
   level smallint NOT NULL CHECK (level > 0),
   after_hours integer NOT NULL CHECK (after_hours > 0),
@@ -901,7 +897,7 @@ CREATE TABLE escalation_rules (
   UNIQUE (category_id, level)
 );
 CREATE TABLE ticket_comments (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   ticket_id uuid NOT NULL REFERENCES tickets(id),
   author_id uuid NOT NULL REFERENCES users(id),
   body text NOT NULL,
@@ -914,7 +910,7 @@ CREATE TABLE ticket_attachments (
   PRIMARY KEY (ticket_id, file_id)
 );
 CREATE TABLE ticket_status_history (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   ticket_id uuid NOT NULL REFERENCES tickets(id),
   from_status text,
   to_status text NOT NULL,
@@ -924,12 +920,12 @@ CREATE TABLE ticket_status_history (
 
 -- ---------- 11. Fees and payments ---------------------------------------
 CREATE TABLE fee_heads (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   code text NOT NULL UNIQUE,                     -- tuition, hostel, exam, bus, fine
   name text NOT NULL
 );
 CREATE TABLE fee_structures (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   course_id uuid NOT NULL REFERENCES courses(id),
   academic_year_id uuid NOT NULL REFERENCES academic_years(id),
   UNIQUE (course_id, academic_year_id)
@@ -937,22 +933,22 @@ CREATE TABLE fee_structures (
 CREATE TABLE fee_structure_items (
   fee_structure_id uuid NOT NULL REFERENCES fee_structures(id),
   fee_head_id uuid NOT NULL REFERENCES fee_heads(id),
-  amount amount_t NOT NULL,
+  amount numeric(12,2) NOT NULL,
   due_date date NOT NULL,
   PRIMARY KEY (fee_structure_id, fee_head_id)
 );
 CREATE TABLE fine_rules (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   fee_head_id uuid NOT NULL REFERENCES fee_heads(id),
   grace_days smallint NOT NULL DEFAULT 0,
-  amount_per_day amount_t NOT NULL,
-  max_amount amount_t,
+  amount_per_day numeric(12,2) NOT NULL,
+  max_amount numeric(12,2),
   effective_from date NOT NULL,
   UNIQUE (fee_head_id, effective_from)
 );
 CREATE SEQUENCE invoice_no_seq;
 CREATE TABLE invoices (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   invoice_no text NOT NULL UNIQUE DEFAULT ('INV-' || lpad(nextval('invoice_no_seq')::text, 8, '0')),
   student_id uuid NOT NULL REFERENCES students(user_id),
   academic_year_id uuid NOT NULL REFERENCES academic_years(id),
@@ -962,7 +958,7 @@ CREATE TABLE invoices (
 );
 -- Charges are positive. Fines are charges. Waivers and scholarships are negative.
 CREATE TABLE invoice_items (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   invoice_id uuid NOT NULL REFERENCES invoices(id),
   fee_head_id uuid NOT NULL REFERENCES fee_heads(id),
   kind text NOT NULL CHECK (kind IN ('charge','fine','waiver','scholarship')),
@@ -972,10 +968,10 @@ CREATE TABLE invoice_items (
   CHECK ((kind IN ('charge','fine') AND amount >= 0) OR (kind IN ('waiver','scholarship') AND amount <= 0))
 );
 CREATE TABLE payments (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   payer_user_id uuid NOT NULL REFERENCES users(id),
-  amount amount_t NOT NULL CHECK (amount > 0),
+  amount numeric(12,2) NOT NULL CHECK (amount > 0),
   method text NOT NULL CHECK (method IN ('upi','card','netbanking','cash','dd','cheque')),
   gateway text,
   gateway_order_id text,
@@ -991,11 +987,11 @@ CREATE UNIQUE INDEX uq_payment_gateway_txn ON payments (gateway, gateway_txn_id)
 CREATE TABLE payment_allocations (
   payment_id uuid NOT NULL REFERENCES payments(id),
   invoice_id uuid NOT NULL REFERENCES invoices(id),
-  amount amount_t NOT NULL CHECK (amount > 0),
+  amount numeric(12,2) NOT NULL CHECK (amount > 0),
   PRIMARY KEY (payment_id, invoice_id)
 );
 CREATE TABLE gateway_events (                    -- raw webhooks, kept for audit and replay
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   provider text NOT NULL,
   provider_event_id text NOT NULL,
   payload jsonb NOT NULL,
@@ -1005,9 +1001,9 @@ CREATE TABLE gateway_events (                    -- raw webhooks, kept for audit
   UNIQUE (provider, provider_event_id)
 );
 CREATE TABLE refunds (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   payment_id uuid NOT NULL REFERENCES payments(id),
-  amount amount_t NOT NULL CHECK (amount > 0),
+  amount numeric(12,2) NOT NULL CHECK (amount > 0),
   reason text NOT NULL,
   status text NOT NULL DEFAULT 'requested' CHECK (status IN ('requested','approved','rejected','processed','failed')),
   requested_by uuid NOT NULL REFERENCES users(id),
@@ -1018,9 +1014,9 @@ CREATE TABLE refunds (
   CHECK (approved_by IS DISTINCT FROM requested_by)
 );
 CREATE TABLE waiver_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   invoice_id uuid NOT NULL REFERENCES invoices(id),
-  amount amount_t NOT NULL CHECK (amount > 0),
+  amount numeric(12,2) NOT NULL CHECK (amount > 0),
   reason text NOT NULL,
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
   requested_by uuid NOT NULL REFERENCES users(id),
@@ -1030,10 +1026,10 @@ CREATE TABLE waiver_requests (
   CHECK (approved_by IS DISTINCT FROM requested_by)
 );
 CREATE TABLE scholarships (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL,
   provider text,
-  amount amount_t,
+  amount numeric(12,2),
   last_apply_date date,
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
@@ -1045,10 +1041,10 @@ CREATE TABLE student_scholarships (
   PRIMARY KEY (student_id, scholarship_id)
 );
 CREATE TABLE bank_statement_lines (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   statement_date date NOT NULL,
   reference text NOT NULL,
-  amount amount_t NOT NULL,
+  amount numeric(12,2) NOT NULL,
   matched_payment_id uuid REFERENCES payments(id),
   raw jsonb,
   UNIQUE (statement_date, reference, amount)
@@ -1056,11 +1052,11 @@ CREATE TABLE bank_statement_lines (
 
 -- ---------- 12. Library, gym, canteen, transport ------------------------
 CREATE TABLE authors (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL UNIQUE
 );
 CREATE TABLE books (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   isbn text UNIQUE,
   title text NOT NULL,
   LIKE _tpl_sd INCLUDING DEFAULTS
@@ -1071,13 +1067,13 @@ CREATE TABLE book_authors (
   PRIMARY KEY (book_id, author_id)
 );
 CREATE TABLE book_copies (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   book_id uuid NOT NULL REFERENCES books(id),
   accession_no text NOT NULL UNIQUE,
   status text NOT NULL DEFAULT 'available' CHECK (status IN ('available','issued','lost','damaged'))
 );
 CREATE TABLE book_loans (                        -- fine is computed, then posted as an invoice item
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   copy_id uuid NOT NULL REFERENCES book_copies(id),
   borrower_id uuid NOT NULL REFERENCES users(id),
   issued_at timestamptz NOT NULL DEFAULT now(),
@@ -1087,14 +1083,14 @@ CREATE TABLE book_loans (                        -- fine is computed, then poste
 );
 CREATE UNIQUE INDEX uq_copy_one_loan ON book_loans (copy_id) WHERE returned_at IS NULL;
 CREATE TABLE book_reservations (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   book_id uuid NOT NULL REFERENCES books(id),
   user_id uuid NOT NULL REFERENCES users(id),
   status text NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting','ready','fulfilled','cancelled')),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE gym_slots (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   slot_date date NOT NULL,
   start_time time NOT NULL,
   end_time time NOT NULL,
@@ -1110,15 +1106,15 @@ CREATE TABLE gym_bookings (                      -- app locks the slot row (SELE
   PRIMARY KEY (slot_id, user_id)
 );
 CREATE TABLE canteen_items (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   vendor_id uuid REFERENCES vendors(id),
   name text NOT NULL,
-  price amount_t NOT NULL,
+  price numeric(12,2) NOT NULL,
   is_available boolean NOT NULL DEFAULT true,
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE transport_routes (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL UNIQUE,
   vendor_id uuid REFERENCES vendors(id)
 );
@@ -1126,13 +1122,13 @@ CREATE TABLE route_stops (
   route_id uuid NOT NULL REFERENCES transport_routes(id),
   stop_no smallint NOT NULL,
   stop_name text NOT NULL,
-  latitude lat_t NOT NULL,
-  longitude lng_t NOT NULL,
+  latitude numeric(9,6) NOT NULL,
+  longitude numeric(9,6) NOT NULL,
   scheduled_time time NOT NULL,
   PRIMARY KEY (route_id, stop_no)
 );
 CREATE TABLE vehicles (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   registration_no text NOT NULL UNIQUE,
   route_id uuid REFERENCES transport_routes(id),
   driver_user_id uuid REFERENCES users(id),
@@ -1142,8 +1138,8 @@ CREATE TABLE vehicles (
 CREATE TABLE vehicle_locations (                 -- high volume, partitioned by month
   vehicle_id uuid NOT NULL REFERENCES vehicles(id),
   recorded_at timestamptz NOT NULL,
-  latitude lat_t NOT NULL,
-  longitude lng_t NOT NULL,
+  latitude numeric(9,6) NOT NULL,
+  longitude numeric(9,6) NOT NULL,
   speed_kmph numeric(5,1),
   PRIMARY KEY (vehicle_id, recorded_at)
 ) PARTITION BY RANGE (recorded_at);
@@ -1151,7 +1147,7 @@ CREATE TABLE vehicle_locations_default PARTITION OF vehicle_locations DEFAULT;
 
 -- ---------- 13. Notices and notifications -------------------------------
 CREATE TABLE notices (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   title text NOT NULL,
   body text NOT NULL,
   created_by uuid NOT NULL REFERENCES users(id),
@@ -1164,7 +1160,7 @@ CREATE TABLE notices (
   LIKE _tpl_sd INCLUDING DEFAULTS
 );
 CREATE TABLE notice_audiences (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   notice_id uuid NOT NULL REFERENCES notices(id),
   audience_type text NOT NULL CHECK (audience_type IN ('all','role','department','batch','section','hostel','user')),
   audience_id uuid,
@@ -1182,7 +1178,7 @@ CREATE TABLE notice_reads (
   PRIMARY KEY (notice_id, user_id)
 );
 CREATE TABLE message_templates (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   code text NOT NULL,
   channel text NOT NULL CHECK (channel IN ('push','sms','email','call')),
   language text NOT NULL CHECK (language IN ('en','hi','or')),
@@ -1193,7 +1189,7 @@ CREATE TABLE message_templates (
   UNIQUE (code, channel, language, version)
 );
 CREATE TABLE notifications (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id),
   kind text NOT NULL,                            -- outpass_approved, fee_due, sos ...
   title text NOT NULL,
@@ -1205,7 +1201,7 @@ CREATE TABLE notifications (
 );
 -- Fallback chain: push, then SMS, then call. One row per try.
 CREATE TABLE notification_deliveries (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   notification_id uuid NOT NULL REFERENCES notifications(id),
   channel text NOT NULL CHECK (channel IN ('push','sms','email','call')),
   attempt_no smallint NOT NULL DEFAULT 1,
@@ -1229,13 +1225,13 @@ CREATE TABLE user_quiet_hours (
   quiet_end time NOT NULL
 );
 CREATE TABLE push_tokens (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   device_id uuid NOT NULL REFERENCES user_devices(id),
   token text NOT NULL UNIQUE,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE messages (                          -- official chat with set reply hours
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   sender_id uuid NOT NULL REFERENCES users(id),
   recipient_id uuid NOT NULL REFERENCES users(id),
   body text NOT NULL,
@@ -1246,7 +1242,7 @@ CREATE TABLE messages (                          -- official chat with set reply
 
 -- ---------- 14. Documents and certificates ------------------------------
 CREATE TABLE document_templates (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   code text NOT NULL,
   version integer NOT NULL DEFAULT 1,
   body text NOT NULL,
@@ -1254,16 +1250,16 @@ CREATE TABLE document_templates (
   UNIQUE (code, version)
 );
 CREATE TABLE document_types (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   code text NOT NULL UNIQUE,                     -- bonafide, bort, transfer, transcript
   name text NOT NULL,
   template_id uuid REFERENCES document_templates(id),
-  fee_amount amount_t NOT NULL DEFAULT 0,
+  fee_amount numeric(12,2) NOT NULL DEFAULT 0,
   needs_approval boolean NOT NULL DEFAULT true,
   sla_days smallint NOT NULL DEFAULT 3
 );
 CREATE TABLE document_requests (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   requester_id uuid NOT NULL REFERENCES users(id),
   subject_user_id uuid NOT NULL REFERENCES users(id),
   document_type_id uuid NOT NULL REFERENCES document_types(id),
@@ -1276,7 +1272,7 @@ CREATE TABLE document_requests (
   LIKE _tpl_ts INCLUDING DEFAULTS
 );
 CREATE TABLE issued_documents (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   request_id uuid REFERENCES document_requests(id),
   document_type_id uuid NOT NULL REFERENCES document_types(id),
   subject_user_id uuid NOT NULL REFERENCES users(id),
@@ -1288,7 +1284,7 @@ CREATE TABLE issued_documents (
   revoke_reason text
 );
 CREATE TABLE no_dues_clearances (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   department_id uuid NOT NULL REFERENCES departments(id),
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','cleared','blocked')),
@@ -1308,7 +1304,7 @@ CREATE TABLE alumni_profiles (
 
 -- ---------- 15. Activities and placements --------------------------------
 CREATE TABLE clubs (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL UNIQUE,
   advisor_id uuid REFERENCES staff(user_id),
   LIKE _tpl_sd INCLUDING DEFAULTS
@@ -1320,7 +1316,7 @@ CREATE TABLE club_members (
   PRIMARY KEY (club_id, user_id)
 );
 CREATE TABLE events (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   club_id uuid REFERENCES clubs(id),
   title text NOT NULL,
   description text,
@@ -1342,7 +1338,7 @@ CREATE TABLE event_registrations (
   PRIMARY KEY (event_id, user_id)
 );
 CREATE TABLE teams (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   event_id uuid NOT NULL REFERENCES events(id),
   name text NOT NULL,
   created_by uuid NOT NULL REFERENCES users(id),
@@ -1354,7 +1350,7 @@ CREATE TABLE team_members (
   PRIMARY KEY (team_id, user_id)
 );
 CREATE TABLE event_awards (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   event_id uuid NOT NULL REFERENCES events(id),
   user_id uuid NOT NULL REFERENCES users(id),
   award text NOT NULL,                           -- participant, winner, runner-up
@@ -1362,12 +1358,12 @@ CREATE TABLE event_awards (
   UNIQUE (event_id, user_id, award)
 );
 CREATE TABLE companies (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL UNIQUE,
   website text
 );
 CREATE TABLE placement_drives (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   company_id uuid NOT NULL REFERENCES companies(id),
   role_title text NOT NULL,
   drive_date date,
@@ -1391,10 +1387,10 @@ CREATE TABLE drive_applications (
 
 -- ---------- 16. Safety, health and discipline ---------------------------
 CREATE TABLE emergency_directory (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   kind text NOT NULL CHECK (kind IN ('ambulance','nurse','security','fire','hospital','helpline','other')),
   name text NOT NULL,
-  phone phone_t NOT NULL,
+  phone text NOT NULL,
   hostel_id uuid REFERENCES hostels(id),
   sort_order smallint NOT NULL DEFAULT 1
 );
@@ -1406,12 +1402,12 @@ CREATE TABLE sos_escalation_steps (              -- who is alerted, in order
   CHECK (num_nonnulls(role_id, emergency_directory_id) = 1)
 );
 CREATE TABLE sos_incidents (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   triggered_by uuid NOT NULL REFERENCES users(id),     -- student, roommate or faculty
   source text NOT NULL CHECK (source IN ('button','shake','roommate','faculty','guard')),
-  latitude lat_t,
-  longitude lng_t,
+  latitude numeric(9,6),
+  longitude numeric(9,6),
   location_id uuid REFERENCES locations(id),
   status text NOT NULL DEFAULT 'open' CHECK (status IN ('open','acknowledged','escalated','closed','false_alarm')),
   idempotency_key text NOT NULL UNIQUE,
@@ -1421,7 +1417,7 @@ CREATE TABLE sos_incidents (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE sos_alerts (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   incident_id uuid NOT NULL REFERENCES sos_incidents(id),
   step_no smallint NOT NULL REFERENCES sos_escalation_steps(step_no),
   recipient_user_id uuid REFERENCES users(id),
@@ -1431,7 +1427,7 @@ CREATE TABLE sos_alerts (
   CHECK (num_nonnulls(recipient_user_id, recipient_directory_id) = 1)
 );
 CREATE TABLE sos_updates (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   incident_id uuid NOT NULL REFERENCES sos_incidents(id),
   author_id uuid NOT NULL REFERENCES users(id),
   body text NOT NULL,
@@ -1440,7 +1436,7 @@ CREATE TABLE sos_updates (
 );
 -- Sensitive: restrict to nurse, doctor and the student only
 CREATE TABLE medical_visits (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   visit_kind text NOT NULL CHECK (visit_kind IN ('clinic','hospital')),
   visited_at timestamptz NOT NULL,
@@ -1451,7 +1447,7 @@ CREATE TABLE medical_visits (
 );
 -- Anonymous reports have NO reporter column on purpose.
 CREATE TABLE anonymous_reports (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   token_hash text NOT NULL UNIQUE,               -- reporter keeps the token to check status
   category text NOT NULL CHECK (category IN ('ragging','harassment','safety','faculty','other')),
   body text NOT NULL,
@@ -1461,7 +1457,7 @@ CREATE TABLE anonymous_reports (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE safety_cases (                      -- named complaints, committee only
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   case_no text NOT NULL UNIQUE,
   category text NOT NULL CHECK (category IN ('ragging','harassment','faculty','discipline','other')),
   complainant_id uuid REFERENCES users(id),
@@ -1472,14 +1468,14 @@ CREATE TABLE safety_cases (                      -- named complaints, committee 
   LIKE _tpl_ts INCLUDING DEFAULTS
 );
 CREATE TABLE case_responses (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   case_id uuid NOT NULL REFERENCES safety_cases(id),
   author_id uuid NOT NULL REFERENCES users(id),
   body text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE case_access_log (                   -- who opened which case
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   case_id uuid REFERENCES safety_cases(id),
   report_id uuid REFERENCES anonymous_reports(id),
   user_id uuid NOT NULL REFERENCES users(id),
@@ -1488,7 +1484,7 @@ CREATE TABLE case_access_log (                   -- who opened which case
   CHECK (num_nonnulls(case_id, report_id) = 1)
 );
 CREATE TABLE counselling_bookings (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   counsellor_id uuid NOT NULL REFERENCES staff(user_id),
   slot_start timestamptz NOT NULL,
@@ -1501,7 +1497,7 @@ CREATE TABLE counselling_bookings (
     WHERE (status = 'booked')
 );
 CREATE TABLE warnings (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id uuid NOT NULL REFERENCES students(user_id),
   issued_by uuid NOT NULL REFERENCES users(id),
   kind text NOT NULL CHECK (kind IN ('warning','fine','meeting_call','suspension')),
@@ -1518,7 +1514,7 @@ CREATE TABLE feedback_submissions (
   PRIMARY KEY (offering_id, student_id)
 );
 CREATE TABLE feedback_responses (
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   offering_id uuid NOT NULL REFERENCES subject_offerings(id),
   rating smallint NOT NULL CHECK (rating BETWEEN 1 AND 5),
   comment text,
@@ -1548,7 +1544,7 @@ CREATE TRIGGER trg_case_log_immutable BEFORE UPDATE OR DELETE ON case_access_log
   FOR EACH ROW EXECUTE FUNCTION block_log_changes();
 
 CREATE TABLE data_access_logs (                  -- who viewed whose data
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   viewer_id uuid NOT NULL REFERENCES users(id),
   subject_user_id uuid NOT NULL REFERENCES users(id),
   resource text NOT NULL,
@@ -1572,7 +1568,7 @@ CREATE TABLE idempotency_keys (
   PRIMARY KEY (scope, key)
 );
 CREATE TABLE system_rules (                      -- versioned rules: fine, attendance, outpass limits
-  id pk_uuid PRIMARY KEY,
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   rule_key text NOT NULL,
   version integer NOT NULL,
   value jsonb NOT NULL,

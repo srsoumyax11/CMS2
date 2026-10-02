@@ -1,8 +1,13 @@
 import { Elysia } from 'elysia';
 import { swagger } from '@elysiajs/swagger';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { authRoutes } from './routes/auth';
+import { studentRoutes } from './routes/student';
+import { wardenRoutes } from './routes/warden';
+import { facultyRoutes } from './routes/faculty';
+import { parentRoutes } from './routes/parent';
+import { adminRoutes } from './routes/admin';
+import { sharedRoutes } from './routes/shared';
+import { prisma } from './config/prisma';
 
 const app = new Elysia()
   .use(
@@ -13,14 +18,23 @@ const app = new Elysia()
           version: '1.0.0',
           description: 'Comprehensive API documentation for College Management System',
         },
+        tags: [
+          { name: 'Authentication', description: 'Login, OTP, Self Signup & Role Requests' },
+          { name: 'Student', description: 'Student persona endpoints' },
+          { name: 'Warden', description: 'Warden & Hostel operations endpoints' },
+          { name: 'Faculty', description: 'Faculty & Classroom management endpoints' },
+          { name: 'Parent', description: 'Parent portal endpoints' },
+          { name: 'Admin', description: 'Admin & Governance endpoints' },
+          { name: 'Shared Platform', description: 'Files, Notifications, QR & Webhooks' },
+        ],
       },
     })
   )
-  .decorate('prisma', prisma)
   .onError(({ code, error, set }) => {
     console.error(`[Error] ${code}:`, error);
     set.status = 500;
-    return { success: false, error: error.message };
+    const msg = error && typeof error === 'object' && 'message' in error ? (error as any).message : String(error);
+    return { success: false, error: msg };
   })
   .get('/', () => {
     return {
@@ -30,9 +44,8 @@ const app = new Elysia()
       docs: '/swagger',
     };
   })
-  .get('/api/health', async ({ prisma }) => {
+  .get('/api/v1/health', async () => {
     try {
-      // Test the database connection
       await prisma.$queryRaw`SELECT 1`;
       return {
         success: true,
@@ -47,6 +60,17 @@ const app = new Elysia()
       };
     }
   })
+  // Mount API v1 routes
+  .group('/api/v1', (app) =>
+    app
+      .use(authRoutes)
+      .use(studentRoutes)
+      .use(wardenRoutes)
+      .use(facultyRoutes)
+      .use(parentRoutes)
+      .use(adminRoutes)
+      .use(sharedRoutes)
+  )
   .listen(3000);
 
 console.log(`🦊 Elysia API is running at http://${app.server?.hostname}:${app.server?.port}`);
