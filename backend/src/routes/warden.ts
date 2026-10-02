@@ -42,7 +42,7 @@ export const wardenRoutes = new Elysia({ prefix: '/warden' })
           orderBy: { created_at: 'desc' },
         });
 
-        const data = outpasses.map((o) => ({
+        const data = outpasses.map((o: any) => ({
           id: o.id,
           studentId: o.student_id,
           studentName: o.students.users.full_name,
@@ -104,7 +104,7 @@ export const wardenRoutes = new Elysia({ prefix: '/warden' })
           },
         });
 
-        const data = overdue.map((o) => ({
+        const data = overdue.map((o: any) => ({
           id: o.id,
           studentName: o.students.users.full_name,
           admissionNo: o.students.admission_no,
@@ -390,7 +390,7 @@ export const wardenRoutes = new Elysia({ prefix: '/warden' })
           },
         });
 
-        const data = vacantBeds.map((b) => ({
+        const data = vacantBeds.map((b: any) => ({
           bedId: b.id,
           bedNo: b.bed_no,
           roomNo: b.hostel_rooms.room_no,

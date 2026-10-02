@@ -156,7 +156,7 @@ export const facultyRoutes = new Elysia({ prefix: '/faculty' })
           },
         });
 
-        const data = disputes.map((d) => ({
+        const data = disputes.map((d: any) => ({
           id: d.id,
           sessionId: d.session_id,
           studentId: d.student_id,
@@ -397,7 +397,7 @@ export const facultyRoutes = new Elysia({ prefix: '/faculty' })
           },
         });
 
-        const data = entries.map((e) => ({
+        const data = entries.map((e: any) => ({
           id: e.id,
           dayOfWeek: e.day_of_week,
           startTime: e.periods.start_time,
@@ -442,7 +442,7 @@ export const facultyRoutes = new Elysia({ prefix: '/faculty' })
           },
         });
 
-        const data = mentees.map((m) => ({
+        const data = mentees.map((m: any) => ({
           studentId: m.student_id,
           admissionNo: m.students.admission_no,
           fullName: m.students.users.full_name,

@@ -90,7 +90,7 @@ describe('Faculty API Routes (/api/v1/faculty)', () => {
     const period = await prisma.periods.create({
       data: {
         id: crypto.randomUUID(),
-        period_no: Math.floor(Math.random() * 1000) + 1,
+        period_no: Math.floor(Math.random() * 30000) + 1,
         start_time: new Date('1970-01-01T09:00:00Z'),
         end_time: new Date('1970-01-01T10:00:00Z'),
       },

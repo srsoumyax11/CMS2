@@ -92,7 +92,7 @@ export const parentRoutes = new Elysia({ prefix: '/parent' })
           },
         });
 
-        const children = links.map((l) => ({
+        const children = links.map((l: any) => ({
           studentId: l.student_id,
           admissionNo: l.students.admission_no,
           fullName: l.students.users.full_name,
@@ -211,13 +211,13 @@ export const parentRoutes = new Elysia({ prefix: '/parent' })
           orderBy: { due_date: 'asc' },
         });
 
-        const data = invoices.map((inv) => ({
+        const data = invoices.map((inv: any) => ({
           invoiceId: inv.id,
           invoiceNo: inv.invoice_no,
           academicYear: inv.academic_years.label,
           dueDate: inv.due_date,
           status: inv.status,
-          items: inv.invoice_items.map((item) => ({
+          items: inv.invoice_items.map((item: any) => ({
             head: item.fee_heads.name,
             amount: item.amount,
           })),

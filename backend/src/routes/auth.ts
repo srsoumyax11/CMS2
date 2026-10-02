@@ -326,7 +326,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         take: 10,
       });
 
-      const devices = logs.map((log) => ({
+      const devices = logs.map((log: any) => ({
         id: log.id.toString(),
         ipAddress: log.ip_address,
         loginAt: log.occurred_at,

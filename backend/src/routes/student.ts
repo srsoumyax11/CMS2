@@ -289,7 +289,7 @@ export const studentRoutes = new Elysia({ prefix: '/student' })
           },
         });
 
-        const timetable = entries.map((entry) => ({
+        const timetable = entries.map((entry: any) => ({
           id: entry.id,
           dayOfWeek: entry.day_of_week,
           startTime: entry.periods.start_time,
