@@ -291,4 +291,105 @@ describe('Auth API Routes (/api/v1/auth)', () => {
       expect(json.error).toBe('ROLE_NOT_FOUND');
     });
   });
+
+  describe('Direct Registration & Token Utilities', () => {
+    it('should register a new account after OTP verification', async () => {
+      const testTarget = `newuser_${Date.now()}@campus.edu`;
+
+      // 1. Send OTP
+      const otpSendRes = await app.handle(
+        new Request('http://localhost/auth/otp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            target: testTarget,
+            channel: 'email',
+            purpose: 'verify',
+          }),
+        })
+      );
+      const sendJson = await otpSendRes.json() as any;
+      const regOtpId = sendJson.data.otpId;
+
+      // 2. Verify OTP
+      await app.handle(
+        new Request('http://localhost/auth/otp/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            otpId: regOtpId,
+            code: '123456',
+          }),
+        })
+      );
+
+      // 3. Register Account
+      const regRes = await app.handle(
+        new Request('http://localhost/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            target: testTarget,
+            password: 'NewUserSecret123!',
+            fullName: 'New User Registered',
+            otpId: regOtpId,
+          }),
+        })
+      );
+
+      expect(regRes.status).toBe(200);
+      const regJson = await regRes.json() as any;
+      expect(regJson.success).toBe(true);
+      expect(regJson.data.fullName).toBe('New User Registered');
+    });
+
+    it('should refresh access token', async () => {
+      const res = await app.handle(
+        new Request('http://localhost/auth/token/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: 'mock_refresh_token_123' }),
+        })
+      );
+
+      expect(res.status).toBe(200);
+      const json = await res.json() as any;
+      expect(json.success).toBe(true);
+      expect(json.data.token).toBeDefined();
+    });
+
+    it('should verify emergency backup code', async () => {
+      const res = await app.handle(
+        new Request('http://localhost/auth/backup-code/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identity: testUserCode,
+            backupCode: 'BACKUP-123456',
+          }),
+        })
+      );
+
+      expect(res.status).toBe(200);
+      const json = await res.json() as any;
+      expect(json.success).toBe(true);
+      expect(json.data.userCode).toBe(testUserCode);
+    });
+
+    it('should fetch login security alerts for authenticated user', async () => {
+      const res = await app.handle(
+        new Request('http://localhost/auth/login-alerts', {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer mock_jwt_token_${testUserId}`,
+          },
+        })
+      );
+
+      expect(res.status).toBe(200);
+      const json = await res.json() as any;
+      expect(json.success).toBe(true);
+      expect(Array.isArray(json.data)).toBe(true);
+    });
+  });
 });

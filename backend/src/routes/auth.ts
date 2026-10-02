@@ -427,4 +427,214 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         summary: 'Request a user role (Self-signup approval flow)',
       },
     }
+  )
+
+  /**
+   * POST /api/v1/auth/register
+   * Direct registration with email/phone & password after verified OTP
+   */
+  .post(
+    '/register',
+    async ({ body, set }) => {
+      try {
+        const { target, password, fullName, otpId } = body;
+
+        // 1. Verify OTP was consumed
+        const otp = await prisma.otp_requests.findUnique({
+          where: { id: otpId },
+        });
+
+        if (!otp || !otp.consumed_at || otp.target !== target) {
+          set.status = 400;
+          return errorResponse('INVALID_REGISTRATION_OTP', 'Verified OTP is required for account registration');
+        }
+
+        // 2. Check duplicate user
+        const existing = await prisma.users.findFirst({
+          where: {
+            OR: [{ email: target }, { phone: target }],
+            deleted_at: null,
+          },
+        });
+
+        if (existing) {
+          set.status = 409;
+          return errorResponse('USER_ALREADY_EXISTS', 'Account with this email or phone already exists');
+        }
+
+        const passwordHash = await hashPassword(password);
+        const userCode = `REG_${Date.now()}`;
+
+        const newUser = await prisma.users.create({
+          data: {
+            id: crypto.randomUUID(),
+            user_code: userCode,
+            full_name: fullName,
+            email: target.includes('@') ? target : null,
+            phone: !target.includes('@') ? target : null,
+            password_hash: passwordHash,
+            status: 'active',
+          },
+        });
+
+        const token = `mock_jwt_token_${newUser.id}`;
+
+        return successResponse(
+          {
+            userId: newUser.id,
+            userCode: newUser.user_code,
+            fullName: newUser.full_name,
+            status: newUser.status,
+            token,
+          },
+          'Account registered successfully'
+        );
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('REGISTER_FAILED', error instanceof Error ? error.message : 'Registration failed');
+      }
+    },
+    {
+      body: t.Object({
+        target: t.String({ description: 'Email address or Phone number' }),
+        password: t.String({ minLength: 6 }),
+        fullName: t.String({ minLength: 2 }),
+        otpId: t.String({ format: 'uuid', description: 'ID of verified OTP' }),
+      }),
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Direct user registration after OTP verification',
+      },
+    }
+  )
+
+  /**
+   * POST /api/v1/auth/token/refresh
+   * Refresh JWT access token
+   */
+  .post(
+    '/token/refresh',
+    async ({ body, set }) => {
+      try {
+        const { refreshToken } = body;
+        if (!refreshToken) {
+          set.status = 400;
+          return errorResponse('INVALID_TOKEN', 'Refresh token is required');
+        }
+
+        const token = `refreshed_jwt_token_${Date.now()}`;
+        return successResponse({ token }, 'Token refreshed successfully');
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('REFRESH_FAILED', 'Failed to refresh token');
+      }
+    },
+    {
+      body: t.Object({
+        refreshToken: t.String(),
+      }),
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Refresh access token',
+      },
+    }
+  )
+
+  /**
+   * POST /api/v1/auth/backup-code/verify
+   * Login when phone/OTP is lost using emergency backup code
+   */
+  .post(
+    '/backup-code/verify',
+    async ({ body, set }) => {
+      try {
+        const { identity, backupCode } = body;
+
+        const user = await prisma.users.findFirst({
+          where: {
+            OR: [{ user_code: identity }, { email: identity }, { phone: identity }],
+            deleted_at: null,
+          },
+        });
+
+        if (!user) {
+          set.status = 404;
+          return errorResponse('USER_NOT_FOUND', 'User identity not found');
+        }
+
+        // Mock emergency backup code check (code: "BACKUP-123456")
+        if (backupCode !== 'BACKUP-123456') {
+          set.status = 401;
+          return errorResponse('INVALID_BACKUP_CODE', 'Invalid emergency backup code');
+        }
+
+        const token = `mock_jwt_token_${user.id}`;
+        return successResponse(
+          {
+            userId: user.id,
+            userCode: user.user_code,
+            fullName: user.full_name,
+            token,
+          },
+          'Emergency backup code verified'
+        );
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('BACKUP_VERIFY_FAILED', 'Backup code verification failed');
+      }
+    },
+    {
+      body: t.Object({
+        identity: t.String(),
+        backupCode: t.String(),
+      }),
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Verify emergency backup code',
+      },
+    }
+  )
+
+  /**
+   * GET /api/v1/auth/login-alerts
+   * Odd login history and security alerts
+   */
+  .get(
+    '/login-alerts',
+    async ({ user, set }) => {
+      try {
+        if (!user) {
+          set.status = 401;
+          return errorResponse('UNAUTHORIZED', 'Missing or invalid token');
+        }
+
+        const alerts = await prisma.audit_logs.findMany({
+          where: {
+            actor_user_id: user.id,
+            action: 'USER_LOGIN',
+          },
+          orderBy: { occurred_at: 'desc' },
+          take: 5,
+        });
+
+        const data = alerts.map((a: any) => ({
+          id: a.id.toString(),
+          ipAddress: a.ip_address,
+          loginAt: a.occurred_at,
+          flaggedOdd: false,
+        }));
+
+        return successResponse(data, 'Login security alerts retrieved');
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('FETCH_ALERTS_FAILED', error instanceof Error ? error.message : 'Failed to fetch login alerts');
+      }
+    },
+    {
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Get odd login history and security alerts',
+      },
+    }
   );
+

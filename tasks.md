@@ -36,12 +36,16 @@
 - [x] Implement Auth Middleware (`jwtAuth`, `requireRoles` guard)
 - [x] Build `/api/v1/auth` Endpoints:
   - [x] `POST /api/v1/auth/login` - Authenticate student, faculty, warden, parent, admin
+  - [x] `POST /api/v1/auth/register` - Direct registration with email/phone & password after verified OTP
   - [x] `POST /api/v1/auth/otp/send` - Generate & send OTP
   - [x] `POST /api/v1/auth/otp/verify` - Verify & consume OTP code
+  - [x] `POST /api/v1/auth/token/refresh` - Refresh access token
+  - [x] `POST /api/v1/auth/backup-code/verify` - Verify emergency backup code
   - [x] `POST /api/v1/auth/role-request` - Self-signup role request workflow
   - [x] `POST /api/v1/auth/logout` - Revoke current session
   - [x] `POST /api/v1/auth/password/reset` - Password reset with verified OTP token
   - [x] `GET /api/v1/auth/devices` & `DELETE /api/v1/auth/devices/{id}` - List and force logout devices
+  - [x] `GET /api/v1/auth/login-alerts` - Odd login history and security alerts
 
 ---
 

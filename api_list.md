@@ -7,7 +7,9 @@ Base path: `/api/v1`. All routes need a login token, except the ones marked publ
 | Method | Endpoint | Purpose |
 |---|---|---|
 | POST | /auth/login | Login with ID and password |
+| POST | /auth/register | Register with email/phone & password after verified OTP |
 | POST | /auth/otp/send, /auth/otp/verify | OTP login or reset |
+| POST | /auth/token/refresh | Refresh JWT access token |
 | POST | /auth/backup-code/verify | Login when phone is lost |
 | POST | /auth/logout | Logout |
 | POST | /auth/password/reset | Reset password |
