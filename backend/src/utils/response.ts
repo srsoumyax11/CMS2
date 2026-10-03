@@ -1,3 +1,5 @@
+import { sanitizeErrorMessage } from './error-sanitizer';
+
 export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
@@ -15,10 +17,13 @@ export const successResponse = <T>(data: T, message?: string): ApiResponse<T> =>
   };
 };
 
-export const errorResponse = (error: string, message?: string): ApiResponse => {
+export const errorResponse = (error: string, message?: string, fallbackDefault?: string): ApiResponse => {
+  const safeMessage = message
+    ? sanitizeErrorMessage(message, fallbackDefault || 'An error occurred while processing your request')
+    : undefined;
   return {
     success: false,
-    message,
+    message: safeMessage,
     error,
     timestamp: new Date().toISOString(),
   };

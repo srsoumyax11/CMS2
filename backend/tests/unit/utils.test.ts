@@ -64,5 +64,16 @@ describe('Phase 16 Unit Tests: Utility Modules', () => {
       expect(res.error).toBe('INVALID_INPUT');
       expect(res.message).toBe('Field missing');
     });
+
+    it('should sanitize raw Prisma tracebacks and database connection error strings', () => {
+      const rawPrismaError = `\nInvalid \`prisma.role_approval_rules.findMany()\` invocation in\nD:\\APP_DEV\\PS7\\backend\\src\\routes\\onboarding.ts:75:56\nCan't reach database server at \`127.0.0.1:54322\``;
+      const res = errorResponse('FETCH_FAILED', rawPrismaError, 'Failed to fetch roles');
+
+      expect(res.success).toBe(false);
+      expect(res.error).toBe('FETCH_FAILED');
+      expect(res.message).not.toContain('127.0.0.1');
+      expect(res.message).not.toContain('prisma');
+      expect(res.message).toContain('Database service is temporarily unavailable');
+    });
   });
 });

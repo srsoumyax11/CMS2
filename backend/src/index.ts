@@ -16,6 +16,7 @@ import { disconnectPrisma, prisma } from './config/prisma';
 import { requestLogger } from './middleware/request-logger';
 import { logger } from './config/logger';
 import { env } from './config/env';
+import { sanitizeErrorMessage } from './utils/error-sanitizer';
 
 const PORT = env.PORT;
 
@@ -105,7 +106,8 @@ const app = new Elysia()
     set.status = 500;
     return {
       success: false,
-      error: msg,
+      error: 'INTERNAL_SERVER_ERROR',
+      message: sanitizeErrorMessage(msg, 'An unexpected internal server error occurred. Please try again later.'),
       requestId: errorId,
     };
   })
