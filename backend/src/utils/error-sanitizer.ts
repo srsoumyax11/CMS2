@@ -1,9 +1,10 @@
 import { logger } from '../config/logger';
+import { env } from '../config/env';
 
 /**
  * Checks if a given error or message string represents a raw system/database internal error.
  * Raw system errors (Prisma invocations, stack traces, IP addresses, database connection failures)
- * should NEVER be leaked to frontend clients.
+ * should NEVER be leaked to frontend clients unless EXPOSE_RAW_ERRORS=true is set for developer debugging.
  */
 export function isRawSystemError(err: unknown): boolean {
   if (!err) return false;
@@ -46,10 +47,16 @@ export function isRawSystemError(err: unknown): boolean {
 
 /**
  * Sanitizes error messages before returning them in API responses.
- * If the message contains raw internal server/database details, it logs the full error silently
- * to server logs and returns a safe, clean user-facing fallback string instead.
+ * If EXPOSE_RAW_ERRORS=true, raw error strings are returned directly for developer debugging.
+ * Otherwise, raw internal server/database details are sanitized and replaced with safe messages.
  */
 export function sanitizeErrorMessage(err: unknown, fallbackMessage = 'An error occurred while processing your request'): string {
+  const exposeRaw = process.env.EXPOSE_RAW_ERRORS === 'true' || env.EXPOSE_RAW_ERRORS === 'true';
+
+  if (exposeRaw) {
+    return typeof err === 'string' ? err : err instanceof Error ? err.message : String(err);
+  }
+
   if (isRawSystemError(err)) {
     // Log the full raw internal error to server logs for debugging
     logger.error({

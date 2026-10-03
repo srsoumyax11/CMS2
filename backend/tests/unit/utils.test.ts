@@ -66,6 +66,7 @@ describe('Phase 16 Unit Tests: Utility Modules', () => {
     });
 
     it('should sanitize raw Prisma tracebacks and database connection error strings', () => {
+      delete process.env.EXPOSE_RAW_ERRORS;
       const rawPrismaError = `\nInvalid \`prisma.role_approval_rules.findMany()\` invocation in\nD:\\APP_DEV\\PS7\\backend\\src\\routes\\onboarding.ts:75:56\nCan't reach database server at \`127.0.0.1:54322\``;
       const res = errorResponse('FETCH_FAILED', rawPrismaError, 'Failed to fetch roles');
 
@@ -74,6 +75,16 @@ describe('Phase 16 Unit Tests: Utility Modules', () => {
       expect(res.message).not.toContain('127.0.0.1');
       expect(res.message).not.toContain('prisma');
       expect(res.message).toContain('Database service is temporarily unavailable');
+    });
+
+    it('should return raw error traceback when EXPOSE_RAW_ERRORS is set to true for debugging', () => {
+      process.env.EXPOSE_RAW_ERRORS = 'true';
+      const rawPrismaError = `\nInvalid \`prisma.role_approval_rules.findMany()\` invocation in\nD:\\APP_DEV\\PS7\\backend\\src\\routes\\onboarding.ts:75:56\nCan't reach database server at \`127.0.0.1:54322\``;
+      const res = errorResponse('FETCH_FAILED', rawPrismaError, 'Failed to fetch roles');
+
+      expect(res.success).toBe(false);
+      expect(res.message).toContain('127.0.0.1:54322');
+      delete process.env.EXPOSE_RAW_ERRORS;
     });
   });
 });

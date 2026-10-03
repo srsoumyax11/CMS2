@@ -23,6 +23,7 @@ const envSchema = z.object({
   MAX_FILE_SIZE_BYTES: z.coerce.number().default(10485760), // 10MB
   SKIP_RATE_LIMIT: z.enum(['true', 'false']).default('false'),
   ENABLE_TEST_RATE_LIMIT: z.enum(['true', 'false']).default('false'),
+  EXPOSE_RAW_ERRORS: z.enum(['true', 'false']).default('false'),
 });
 
 export const env = envSchema.parse(process.env);
