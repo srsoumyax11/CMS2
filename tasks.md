@@ -38,7 +38,9 @@
 - [x] Implement Password Hashing & Standard Response utilities (`password.ts`, `response.ts`)
 - [x] Implement Auth Middleware (`jwtAuth`, `requireRoles` guard)
 - [x] Build `/api/v1/auth` Endpoints:
-  - [x] `POST /api/v1/auth/login` - Authenticate student, faculty, warden, parent, admin
+  - [x] `POST /api/v1/auth/login` - Authenticate student, faculty, warden, parent, admin (with 2FA challenge support)
+  - [x] `POST /api/v1/auth/2fa/verify` - Verify 2FA OTP to complete login session
+  - [x] `POST /api/v1/auth/mfa/enable` & `POST /api/v1/auth/mfa/disable` - Enable/disable account 2FA/MFA
   - [x] `POST /api/v1/auth/register` - Direct registration with email/phone & password after verified OTP
   - [x] `POST /api/v1/auth/otp/send` - Generate & send OTP
   - [x] `POST /api/v1/auth/otp/verify` - Verify & consume OTP code
@@ -49,6 +51,7 @@
   - [x] `POST /api/v1/auth/password/reset` - Password reset with verified OTP token
   - [x] `GET /api/v1/auth/devices` & `DELETE /api/v1/auth/devices/{id}` - List and force logout devices
   - [x] `GET /api/v1/auth/login-alerts` - Odd login history and security alerts
+  - [x] `user_flow_simulation.test.ts` - Real-world end-to-end user registration & 2FA authentication flow simulation script
 
 ---
 

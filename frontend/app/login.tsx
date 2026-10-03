@@ -29,7 +29,18 @@ export default function LoginScreen() {
   const textSecondary = isDark ? Tokens.colors.textMuted : Tokens.colors.textSecondary;
 
   const handleLogin = () => {
-    router.replace('/' as any);
+    const code = identifier.trim().toUpperCase();
+    if (code.startsWith('FAC') || code.startsWith('PROF')) {
+      router.replace('/(faculty)' as any);
+    } else if (code.startsWith('WARDEN') || code.startsWith('HOSTEL')) {
+      router.replace('/(warden)' as any);
+    } else if (code.startsWith('PARENT') || code.startsWith('PAR')) {
+      router.replace('/(parent)' as any);
+    } else if (code.startsWith('ADMIN') || code.startsWith('SYS')) {
+      router.replace('/(admin)/users' as any);
+    } else {
+      router.replace('/(student)' as any);
+    }
   };
 
   return (

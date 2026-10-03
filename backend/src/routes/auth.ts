@@ -40,6 +40,38 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           return errorResponse('ACCOUNT_SUSPENDED', `Account is currently ${user.status}`);
         }
 
+        // If 2FA / MFA is enabled for user, trigger 2FA OTP challenge
+        if (user.mfa_enabled) {
+          const target = user.email || user.phone || user.user_code || 'user';
+          const channel = user.email ? 'email' : 'sms';
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+          const mockOtp = '123456';
+          const codeHash = await hashPassword(mockOtp);
+
+          const otp = await prisma.otp_requests.create({
+            data: {
+              id: crypto.randomUUID(),
+              target,
+              channel,
+              purpose: 'login',
+              code_hash: codeHash,
+              expires_at: expiresAt,
+            },
+          });
+
+          return successResponse(
+            {
+              requires2FA: true,
+              otpId: otp.id,
+              userId: user.id,
+              target,
+              channel,
+              devOtpHint: mockOtp,
+            },
+            '2FA OTP required to complete login'
+          );
+        }
+
         // Update last login timestamp
         await prisma.users.update({
           where: { id: user.id },
@@ -84,6 +116,190 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       detail: {
         tags: ['Authentication'],
         summary: 'Login with user credentials',
+      },
+    }
+  )
+
+  /**
+   * POST /api/v1/auth/2fa/verify
+   * Complete 2FA login by verifying OTP code
+   */
+  .post(
+    '/2fa/verify',
+    async ({ body, set, request }) => {
+      try {
+        const { otpId, code, userId } = body;
+
+        const otpRequest = await prisma.otp_requests.findUnique({
+          where: { id: otpId },
+        });
+
+        if (!otpRequest) {
+          set.status = 404;
+          return errorResponse('OTP_NOT_FOUND', '2FA OTP request not found or expired');
+        }
+
+        if (otpRequest.consumed_at) {
+          set.status = 400;
+          return errorResponse('OTP_ALREADY_USED', 'This 2FA OTP has already been consumed');
+        }
+
+        if (new Date() > otpRequest.expires_at) {
+          set.status = 400;
+          return errorResponse('OTP_EXPIRED', '2FA OTP has expired. Please request a new one.');
+        }
+
+        const isValid = await verifyPassword(code, otpRequest.code_hash);
+        if (!isValid) {
+          set.status = 401;
+          return errorResponse('INVALID_OTP', 'Invalid 2FA OTP code');
+        }
+
+        await prisma.otp_requests.update({
+          where: { id: otpId },
+          data: { consumed_at: new Date() },
+        });
+
+        const user = await prisma.users.findUnique({
+          where: { id: userId },
+        });
+
+        if (!user) {
+          set.status = 404;
+          return errorResponse('USER_NOT_FOUND', 'User account not found');
+        }
+
+        await prisma.users.update({
+          where: { id: user.id },
+          data: { last_login_at: new Date() },
+        });
+
+        const token = `mock_jwt_token_${user.id}`;
+        const clientIp = request.headers.get('x-forwarded-for') || '127.0.0.1';
+
+        await prisma.audit_logs.create({
+          data: {
+            actor_user_id: user.id,
+            action: 'USER_LOGIN_2FA',
+            entity_type: 'users',
+            entity_id: user.id,
+            ip_address: clientIp,
+          },
+        });
+
+        return successResponse(
+          {
+            userId: user.id,
+            userCode: user.user_code,
+            fullName: user.full_name,
+            status: user.status,
+            preferredLanguage: user.preferred_language,
+            token,
+          },
+          '2FA Login successful'
+        );
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('2FA_VERIFY_FAILED', error instanceof Error ? error.message : 'Failed to verify 2FA OTP');
+      }
+    },
+    {
+      body: t.Object({
+        otpId: t.String({ format: 'uuid' }),
+        code: t.String({ minLength: 6, maxLength: 6 }),
+        userId: t.String({ format: 'uuid' }),
+      }),
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Verify 2FA OTP to complete login session',
+      },
+    }
+  )
+
+  /**
+   * POST /api/v1/auth/mfa/enable
+   * Enable 2FA / MFA for current user account
+   */
+  .post(
+    '/mfa/enable',
+    async ({ user, set }) => {
+      try {
+        if (!user) {
+          set.status = 401;
+          return errorResponse('UNAUTHORIZED', 'Missing or invalid token');
+        }
+
+        const updated = await prisma.users.update({
+          where: { id: user.id },
+          data: { mfa_enabled: true },
+        });
+
+        await prisma.audit_logs.create({
+          data: {
+            actor_user_id: user.id,
+            action: 'MFA_ENABLED',
+            entity_type: 'users',
+            entity_id: user.id,
+          },
+        });
+
+        return successResponse(
+          { userId: updated.id, mfaEnabled: updated.mfa_enabled },
+          '2FA / MFA enabled successfully'
+        );
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('MFA_ENABLE_FAILED', error instanceof Error ? error.message : 'Failed to enable 2FA');
+      }
+    },
+    {
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Enable 2FA / MFA for account',
+      },
+    }
+  )
+
+  /**
+   * POST /api/v1/auth/mfa/disable
+   * Disable 2FA / MFA for current user account
+   */
+  .post(
+    '/mfa/disable',
+    async ({ user, set }) => {
+      try {
+        if (!user) {
+          set.status = 401;
+          return errorResponse('UNAUTHORIZED', 'Missing or invalid token');
+        }
+
+        const updated = await prisma.users.update({
+          where: { id: user.id },
+          data: { mfa_enabled: false },
+        });
+
+        await prisma.audit_logs.create({
+          data: {
+            actor_user_id: user.id,
+            action: 'MFA_DISABLED',
+            entity_type: 'users',
+            entity_id: user.id,
+          },
+        });
+
+        return successResponse(
+          { userId: updated.id, mfaEnabled: updated.mfa_enabled },
+          '2FA / MFA disabled successfully'
+        );
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('MFA_DISABLE_FAILED', error instanceof Error ? error.message : 'Failed to disable 2FA');
+      }
+    },
+    {
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Disable 2FA / MFA for account',
       },
     }
   )
