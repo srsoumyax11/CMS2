@@ -196,7 +196,6 @@ export const campusOpsRoutes = new Elysia()
           code: body.code,
           name: body.name,
           applies_to: body.appliesTo,
-          max_days_per_year: body.maxDaysPerYear || 10,
         },
       });
       return successResponse(lt, 'Leave type created');
@@ -331,7 +330,6 @@ export const campusOpsRoutes = new Elysia()
       }
       const app = await prisma.student_scholarships.create({
         data: {
-          id: crypto.randomUUID(),
           student_id: user.id,
           scholarship_id: params.id,
           status: 'applied',
