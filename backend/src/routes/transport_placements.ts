@@ -191,7 +191,7 @@ export const transportPlacementsRoutes = new Elysia()
         orderBy: { occurred_at: 'desc' },
         take: 50,
       });
-      const safeLogs = logs.map(l => ({ ...l, id: l.id.toString() }));
+      const safeLogs = logs.map((l: any) => ({ ...l, id: l.id.toString() }));
       return successResponse(safeLogs, 'Access security audit log retrieved');
     } catch (error) {
       set.status = 500;

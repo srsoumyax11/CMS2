@@ -1,42 +1,63 @@
-// Design System Tokens for Flat Design Aesthetics
-// Strictly 2D, solid bright colors, no shadows, no gradients, clean geometric borders
+// Master Design System Tokens per frontend/design.md
+// Editorial Contrast, Nike Black (#111111), Soft Cloud (#F5F5F5), Pill CTAs (30px pill radius), Flat 0 Elevation
 
 export const Tokens = {
   colors: {
-    // 4-6 Solid Bright Palette
-    primary: '#2563EB',      // Solid Royal Blue
-    primaryHover: '#1D4ED8',
-    secondary: '#059669',    // Solid Emerald Green
-    secondaryHover: '#047857',
-    accentOrange: '#EA580C', // Solid Vibrant Orange
-    accentRed: '#DC2626',    // Solid Emergency Red
-    accentPurple: '#7C3AED', // Solid Deep Purple
-    accentYellow: '#D97706', // Solid Amber
+    // Brand Core
+    ink: '#111111',           // Nike Black - Primary CTA, active filter, headlines, primary text
+    canvas: '#FFFFFF',        // Pure White background
+    softCloud: '#F5F5F5',     // Soft Cloud stage gray for product card backdrops & secondary pills
+    hairline: '#CACACB',      // 1px solid dividers
+    hairlineSoft: '#E5E5E5',  // Inset hairline borders
+    charcoal: '#39393B',      // Secondary body copy
+    ash: '#4B4B4D',           // Low-emphasis secondary border & text
+    mute: '#707072',          // Category subtitles, metadata, footer link text
+    stone: '#9E9EA0',         // Utility text
 
-    // Neutral Surfaces (Light & Dark mode support)
-    bgLight: '#F8FAFC',
-    bgDark: '#0F172A',
+    // Semantic Accents
+    primary: '#111111',       // Universal Black Primary
+    primaryHover: '#000000',
+    secondary: '#007D48',     // Success Green (#007D48)
+    secondaryHover: '#006238',
+    sale: '#D30005',          // Retail Discount Red text
+    saleDeep: '#780700',
+    success: '#007D48',       // Confirmation / In-stock green
+    successBright: '#1EAA52',
+    info: '#1151FF',          // Information link accent
+    infoDeep: '#0034E3',
+    accentOrange: '#EA580C',  // Alert state
+    accentYellow: '#EAB308',  // Warning status accent
+    accentRed: '#D30005',     // Alert / Sale
+    accentPurple: '#BEAFFD',  // Collection accent
+    accentTeal: '#0A7281',    // ACG Outdoor accent
+    accentPink: '#ED1AA0',    // Collection accent
+
+    // Surfaces & Modes
+    bgLight: '#FFFFFF',
+    bgDark: '#0B0B0C',
     surfaceLight: '#FFFFFF',
-    surfaceDark: '#1E293B',
-    surfaceHighlightLight: '#EEF2FF',
-    surfaceHighlightDark: '#1E1B4B',
+    surfaceDark: '#161618',
+    surfaceSoftLight: '#F5F5F5',
+    surfaceSoftDark: '#222225',
 
-    // Text & Borders
-    textDark: '#0F172A',
-    textLight: '#F8FAFC',
-    textMuted: '#64748B',
+    // Text & Border Aliases
+    textDark: '#111111',
+    textLight: '#F5F5F5',
+    textMuted: '#707072',
     textInverted: '#FFFFFF',
-    borderLight: '#CBD5E1',
-    borderDark: '#334155',
-    borderActive: '#2563EB',
+    borderLight: '#CACACB',
+    borderSoft: '#E5E5E5',
+    borderDark: '#333336',
+    borderActive: '#111111',
   },
 
   radii: {
-    none: 0,
-    sm: 4,
-    md: 8,
-    lg: 12,
-    pill: 9999,
+    none: 0,        // Flat 0px sharp corners for all containers, cards, imagery & footer
+    sm: 18,         // Icon / avatar background containers
+    md: 24,         // Search pill & input fields
+    lg: 30,         // Universal CTA Pill (30px radius)
+    pill: 30,       // Synonym for universal CTA pill (30px radius)
+    full: 9999,     // Circular icon buttons & color swatch dots
   },
 
   borderWidths: {
@@ -47,25 +68,33 @@ export const Tokens = {
   },
 
   spacing: {
+    xxs: 2,
     xs: 4,
-    sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 48,
+    sm: 8,          // Base unit gutter / card gap
+    md: 12,
+    lg: 18,
+    xl: 24,
+    xxl: 30,
+    section: 48,    // Universal vertical section rhythm
   },
 
   typography: {
-    heroTitle: { fontSize: 36, fontWeight: '900' as const, lineHeight: 44 },
-    sectionTitle: { fontSize: 24, fontWeight: '800' as const, lineHeight: 32 },
-    cardTitle: { fontSize: 18, fontWeight: '700' as const, lineHeight: 24 },
-    body: { fontSize: 14, fontWeight: '400' as const, lineHeight: 20 },
-    subtext: { fontSize: 12, fontWeight: '600' as const, lineHeight: 16 },
-    button: { fontSize: 14, fontWeight: '700' as const },
-    badge: { fontSize: 11, fontWeight: '800' as const, letterSpacing: 1 },
+    displayCampaign: { fontSize: 36, fontWeight: '900' as const, lineHeight: 42, letterSpacing: -0.5, textTransform: 'uppercase' as const },
+    headingXl: { fontSize: 32, fontWeight: '800' as const, lineHeight: 38, letterSpacing: 0 },
+    headingLg: { fontSize: 24, fontWeight: '800' as const, lineHeight: 30, letterSpacing: 0 },
+    headingMd: { fontSize: 16, fontWeight: '700' as const, lineHeight: 22, letterSpacing: 0 },
+    bodyMd: { fontSize: 16, fontWeight: '400' as const, lineHeight: 24 },
+    bodyStrong: { fontSize: 16, fontWeight: '700' as const, lineHeight: 24 },
+    buttonLg: { fontSize: 24, fontWeight: '800' as const },
+    buttonMd: { fontSize: 16, fontWeight: '700' as const },
+    buttonSm: { fontSize: 14, fontWeight: '700' as const },
+    linkMd: { fontSize: 16, fontWeight: '700' as const, lineHeight: 24, textDecorationLine: 'underline' as const },
+    captionMd: { fontSize: 14, fontWeight: '500' as const, lineHeight: 20 },
+    captionSm: { fontSize: 12, fontWeight: '600' as const, lineHeight: 18 },
+    utilityXs: { fontSize: 9, fontWeight: '500' as const, lineHeight: 14 },
   },
 
-  // Flat Design Rule: No Shadows!
+  // Zero Elevation / No Shadows rule per design.md
   shadows: {
     none: {
       shadowColor: 'transparent',
@@ -76,3 +105,4 @@ export const Tokens = {
     },
   },
 };
+

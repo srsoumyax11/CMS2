@@ -18,7 +18,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  title = 'Campus7 Platform',
+  title = 'CAMPUS7 PLATFORM',
   currentRole = 'Student Persona',
   unreadNotificationsCount = 3,
 }) => {
@@ -29,42 +29,43 @@ export const Header: React.FC<HeaderProps> = ({
   const [roleModalVisible, setRoleModalVisible] = useState(false);
   const [activeRole, setActiveRole] = useState(currentRole);
 
-  const bg = isDark ? Tokens.colors.surfaceDark : Tokens.colors.surfaceLight;
-  const border = isDark ? Tokens.colors.borderDark : Tokens.colors.borderLight;
-  const textPrimary = isDark ? Tokens.colors.textLight : Tokens.colors.textDark;
+  const bg = isDark ? Tokens.colors.surfaceDark : Tokens.colors.canvas;
+  const border = isDark ? Tokens.colors.borderDark : Tokens.colors.hairline;
+  const textPrimary = isDark ? Tokens.colors.textLight : Tokens.colors.ink;
 
   return (
     <>
-      <View style={[styles.headerContainer, { backgroundColor: bg, borderColor: border }]}>
+      <View style={[styles.headerContainer, { backgroundColor: bg, borderBottomColor: border }]}>
         {/* Brand & Role Pill */}
         <View style={styles.leftSection}>
-          <TouchableOpacity style={styles.brandContainer} onPress={() => router.push('/' as any)}>
-            <View style={[styles.logoIcon, { backgroundColor: Tokens.colors.primary }]}>
+          <TouchableOpacity style={styles.brandContainer} onPress={() => router.push('/' as any)} activeOpacity={0.8}>
+            <View style={styles.logoIcon}>
               <Text style={styles.logoText}>C7</Text>
             </View>
-            <Text style={[styles.brandTitle, { color: textPrimary }]}>{title}</Text>
+            <Text style={[styles.brandTitle, { color: textPrimary }]}>{title.toUpperCase()}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.rolePill, { backgroundColor: Tokens.colors.primary }]}
+            style={styles.rolePill}
             onPress={() => setRoleModalVisible(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name="person-circle-outline" size={14} color="#FFFFFF" />
-            <Text style={styles.rolePillText}>{activeRole}</Text>
-            <Ionicons name="chevron-down" size={12} color="#FFFFFF" />
+            <Ionicons name="person-circle-outline" size={14} color={Tokens.colors.canvas} />
+            <Text style={styles.rolePillText}>{activeRole.toUpperCase()}</Text>
+            <Ionicons name="chevron-down" size={12} color={Tokens.colors.canvas} />
           </TouchableOpacity>
         </View>
 
-        {/* Action Buttons: Notifications & Dark Mode Indicator */}
+        {/* Action Buttons: Notifications & Profile */}
         <View style={styles.rightSection}>
           <TouchableOpacity
-            style={[styles.iconBtn, { borderColor: border }]}
+            style={styles.iconBtnCircular}
             onPress={() => router.push('/notifications' as any)}
+            activeOpacity={0.8}
           >
             <Ionicons name="notifications-outline" size={18} color={textPrimary} />
             {unreadNotificationsCount > 0 && (
-              <View style={[styles.badge, { backgroundColor: Tokens.colors.accentRed }]}>
+              <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadNotificationsCount}</Text>
               </View>
             )}
@@ -75,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
       <RoleSwitcherModal
         visible={roleModalVisible}
         currentRole={activeRole}
-        onSelectRole={(r) => { setActiveRole(r); setRoleModalVisible(false); }}
+        onSelectRole={(r: string) => { setActiveRole(r); setRoleModalVisible(false); }}
         onClose={() => setRoleModalVisible(false)}
       />
     </>
@@ -88,43 +89,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Tokens.spacing.md,
-    borderBottomWidth: Tokens.borderWidths.flat,
+    paddingHorizontal: Tokens.spacing.lg,
+    borderBottomWidth: Tokens.borderWidths.thin,
   },
-  leftSection: { flexDirection: 'row', alignItems: 'center', gap: Tokens.spacing.sm },
+  leftSection: { flexDirection: 'row', alignItems: 'center', gap: Tokens.spacing.md },
   brandContainer: { flexDirection: 'row', alignItems: 'center', gap: Tokens.spacing.xs },
-  logoIcon: { width: 28, height: 28, borderRadius: Tokens.radii.sm, alignItems: 'center', justifyContent: 'center' },
-  logoText: { color: '#FFFFFF', fontWeight: '900', fontSize: 12 },
-  brandTitle: { fontSize: 16, fontWeight: '900' },
+  logoIcon: {
+    width: 30,
+    height: 30,
+    backgroundColor: Tokens.colors.ink,
+    borderRadius: Tokens.radii.none, // sharp 0px per design.md
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoText: { color: Tokens.colors.canvas, fontWeight: '900', fontSize: 13, letterSpacing: -0.5 },
+  brandTitle: { fontSize: 15, fontWeight: '900', letterSpacing: 0 },
   rolePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: Tokens.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: Tokens.radii.pill,
+    backgroundColor: Tokens.colors.ink,
+    paddingHorizontal: Tokens.spacing.md,
+    paddingVertical: 6,
+    borderRadius: Tokens.radii.pill, // 30px pill radius per design.md
   },
-  rolePillText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+  rolePillText: { color: Tokens.colors.canvas, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
   rightSection: { flexDirection: 'row', alignItems: 'center', gap: Tokens.spacing.xs },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: Tokens.radii.sm,
-    borderWidth: Tokens.borderWidths.flat,
+  iconBtnCircular: {
+    width: 38,
+    height: 38,
+    borderRadius: Tokens.radii.full, // 9999px circular icon button
+    backgroundColor: Tokens.colors.softCloud,
+    borderWidth: Tokens.borderWidths.thin,
+    borderColor: Tokens.colors.hairline,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   badge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
+    top: -2,
+    right: -2,
     minWidth: 16,
     height: 16,
-    borderRadius: 8,
+    borderRadius: Tokens.radii.full,
+    backgroundColor: Tokens.colors.sale,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 3,
+    paddingHorizontal: 4,
   },
-  badgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '900' },
+  badgeText: { color: Tokens.colors.canvas, fontSize: 9, fontWeight: '900' },
 });
+
+export default Header;
+

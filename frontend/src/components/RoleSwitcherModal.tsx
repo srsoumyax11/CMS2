@@ -18,11 +18,11 @@ interface RoleSwitcherModalProps {
 }
 
 const AVAILABLE_ROLES = [
-  { id: 'Student Persona', label: 'Student Persona', icon: 'school', color: Tokens.colors.primary, badge: 'Active Student' },
-  { id: 'Faculty Persona', label: 'Faculty / Professor', icon: 'briefcase', color: Tokens.colors.secondary, badge: 'Teaching Staff' },
-  { id: 'Warden Persona', label: 'Hostel Warden', icon: 'business', color: Tokens.colors.accentOrange, badge: 'Hostel Admin' },
-  { id: 'Parent Persona', label: 'Parent / Guardian', icon: 'people', color: Tokens.colors.accentPurple, badge: 'Guardian' },
-  { id: 'System Admin', label: 'System Administrator', icon: 'settings', color: Tokens.colors.accentRed, badge: 'Super Admin' },
+  { id: 'Student Persona', label: 'STUDENT PERSONA', icon: 'school', color: Tokens.colors.ink, badge: 'Active Student' },
+  { id: 'Faculty Persona', label: 'FACULTY / PROFESSOR', icon: 'briefcase', color: Tokens.colors.ink, badge: 'Teaching Staff' },
+  { id: 'Warden Persona', label: 'HOSTEL WARDEN', icon: 'business', color: Tokens.colors.ink, badge: 'Hostel Admin' },
+  { id: 'Parent Persona', label: 'PARENT / GUARDIAN', icon: 'people', color: Tokens.colors.ink, badge: 'Guardian' },
+  { id: 'System Admin', label: 'SYSTEM ADMINISTRATOR', icon: 'settings', color: Tokens.colors.ink, badge: 'Super Admin' },
 ];
 
 export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({
@@ -34,9 +34,9 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const surface = isDark ? Tokens.colors.surfaceDark : Tokens.colors.surfaceLight;
-  const border = isDark ? Tokens.colors.borderDark : Tokens.colors.borderLight;
-  const textPrimary = isDark ? Tokens.colors.textLight : Tokens.colors.textDark;
+  const surface = isDark ? Tokens.colors.surfaceDark : Tokens.colors.canvas;
+  const border = isDark ? Tokens.colors.borderDark : Tokens.colors.hairline;
+  const textPrimary = isDark ? Tokens.colors.textLight : Tokens.colors.ink;
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -44,11 +44,11 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({
         <View style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
           <View style={styles.header}>
             <View>
-              <Text style={[styles.title, { color: textPrimary }]}>Switch Operational Role</Text>
-              <Text style={styles.sub}>Select your active persona for this session.</Text>
+              <Text style={[styles.title, { color: textPrimary }]}>SELECT OPERATIONAL ROLE</Text>
+              <Text style={styles.sub}>Choose your active persona for this session.</Text>
             </View>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close-circle" size={24} color={Tokens.colors.textMuted} />
+            <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
+              <Ionicons name="close" size={24} color={textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -60,24 +60,22 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({
                   key={r.id}
                   style={[
                     styles.roleItem,
-                    {
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : Tokens.colors.bgLight,
-                      borderColor: isSelected ? r.color : border,
-                      borderWidth: isSelected ? Tokens.borderWidths.flat : Tokens.borderWidths.thin,
-                    },
+                    isSelected
+                      ? { backgroundColor: Tokens.colors.ink, borderColor: Tokens.colors.ink }
+                      : { backgroundColor: Tokens.colors.softCloud, borderColor: border },
                   ]}
                   onPress={() => onSelectRole(r.id)}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.iconCircle, { backgroundColor: r.color }]}>
-                    <Ionicons name={r.icon as any} size={18} color="#FFFFFF" />
+                  <View style={[styles.iconCircle, { backgroundColor: isSelected ? Tokens.colors.canvas : Tokens.colors.ink }]}>
+                    <Ionicons name={r.icon as any} size={16} color={isSelected ? Tokens.colors.ink : Tokens.colors.canvas} />
                   </View>
                   <View style={styles.roleInfo}>
-                    <Text style={[styles.roleName, { color: textPrimary }]}>{r.label}</Text>
-                    <Text style={styles.roleBadge}>{r.badge}</Text>
+                    <Text style={[styles.roleName, { color: isSelected ? Tokens.colors.canvas : textPrimary }]}>{r.label}</Text>
+                    <Text style={[styles.roleBadge, { color: isSelected ? Tokens.colors.hairline : Tokens.colors.mute }]}>{r.badge}</Text>
                   </View>
                   {isSelected && (
-                    <Ionicons name="checkmark-circle" size={20} color={r.color} />
+                    <Ionicons name="checkmark" size={18} color={Tokens.colors.canvas} />
                   )}
                 </TouchableOpacity>
               );
@@ -92,31 +90,37 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: Tokens.spacing.md,
   },
   card: {
     width: '100%',
-    maxWidth: 420,
-    borderRadius: Tokens.radii.lg,
+    maxWidth: 440,
+    borderRadius: Tokens.radii.none, // Flat 0px per design.md
     padding: Tokens.spacing.lg,
-    borderWidth: Tokens.borderWidths.flat,
+    borderWidth: Tokens.borderWidths.thin,
+    borderColor: Tokens.colors.hairline,
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Tokens.spacing.md },
-  title: { fontSize: 18, fontWeight: '900' },
-  sub: { fontSize: 12, color: Tokens.colors.textMuted },
+  title: { fontSize: 16, fontWeight: '900', letterSpacing: 0 },
+  sub: { fontSize: 12, color: Tokens.colors.mute, marginTop: 2 },
   roleList: { gap: Tokens.spacing.sm },
   roleItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Tokens.spacing.sm,
-    borderRadius: Tokens.radii.md,
+    paddingHorizontal: Tokens.spacing.md,
+    paddingVertical: Tokens.spacing.sm,
+    borderRadius: Tokens.radii.pill, // Pill CTAs
+    borderWidth: Tokens.borderWidths.thin,
     gap: Tokens.spacing.sm,
   },
-  iconCircle: { width: 36, height: 36, borderRadius: Tokens.radii.sm, alignItems: 'center', justifyContent: 'center' },
+  iconCircle: { width: 32, height: 32, borderRadius: Tokens.radii.full, alignItems: 'center', justifyContent: 'center' },
   roleInfo: { flex: 1 },
-  roleName: { fontSize: 14, fontWeight: '800' },
-  roleBadge: { fontSize: 11, color: Tokens.colors.textMuted },
+  roleName: { fontSize: 13, fontWeight: '800' },
+  roleBadge: { fontSize: 11, fontWeight: '500' },
 });
+
+export default RoleSwitcherModal;
+
