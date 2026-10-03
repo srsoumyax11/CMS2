@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia';
 import { prisma } from '../config/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 import { jwtAuth } from '../middleware/auth';
+import { studentService } from '../services/student.service';
 
 export const studentRoutes = new Elysia({ prefix: '/student' })
   .use(jwtAuth)
@@ -20,79 +21,12 @@ export const studentRoutes = new Elysia({ prefix: '/student' })
     '/me',
     async ({ user, set }) => {
       try {
-        const student = await prisma.students.findUnique({
-          where: { user_id: user!.id },
-          include: {
-            users: {
-              select: {
-                id: true,
-                user_code: true,
-                full_name: true,
-                email: true,
-                phone: true,
-                status: true,
-                preferred_language: true,
-              },
-            },
-            batches: {
-              include: {
-                courses: true,
-                academic_years: true,
-              },
-            },
-            sections: true,
-            bed_allocations: {
-              where: { to_date: null },
-              include: {
-                beds: {
-                  include: {
-                    hostel_rooms: {
-                      include: {
-                        hostels: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        if (!student) {
-          set.status = 404;
-          return errorResponse('STUDENT_NOT_FOUND', 'Student profile record not found');
-        }
-
-        const activeBed = student.bed_allocations[0];
-        const roomInfo = activeBed
-          ? {
-              allocationId: activeBed.id,
-              hostelName: activeBed.beds.hostel_rooms.hostels.name,
-              floorNo: activeBed.beds.hostel_rooms.floor_no,
-              roomNo: activeBed.beds.hostel_rooms.room_no,
-              bedNo: activeBed.beds.bed_no,
-            }
-          : null;
-
-        return successResponse(
-          {
-            userId: student.user_id,
-            admissionNo: student.admission_no,
-            fullName: student.users.full_name,
-            email: student.users.email,
-            phone: student.users.phone,
-            dateOfBirth: student.date_of_birth,
-            status: student.status,
-            course: student.batches.courses.name,
-            academicYear: student.batches.academic_years.label,
-            section: student.sections?.name || 'Unassigned',
-            room: roomInfo,
-          },
-          'Student profile retrieved successfully'
-        );
+        const profile = await studentService.getStudentProfile(user!.id);
+        return successResponse(profile, 'Student profile retrieved successfully');
       } catch (error) {
-        set.status = 500;
-        return errorResponse('PROFILE_FETCH_FAILED', error instanceof Error ? error.message : 'Unknown error');
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        set.status = msg.includes('not found') ? 404 : 500;
+        return errorResponse(msg.includes('not found') ? 'STUDENT_NOT_FOUND' : 'PROFILE_FETCH_FAILED', msg);
       }
     },
     {

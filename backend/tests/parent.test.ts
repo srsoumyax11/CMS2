@@ -3,6 +3,7 @@ import { parentRoutes } from '../src/routes/parent';
 import { Elysia } from 'elysia';
 import { prisma } from '../src/config/prisma';
 import { hashPassword } from '../src/utils/password';
+import { signAccessToken } from '../src/utils/jwt';
 
 const app = new Elysia().use(parentRoutes);
 
@@ -68,7 +69,7 @@ describe('Parent API Routes (/api/v1/parent)', () => {
       },
     });
     parentUserId = parentUser.id;
-    parentToken = `mock_jwt_token_${parentUserId}`;
+    parentToken = signAccessToken({ sub: parentUserId });
 
     await prisma.guardians.create({
       data: {

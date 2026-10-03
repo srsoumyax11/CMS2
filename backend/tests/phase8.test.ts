@@ -4,6 +4,7 @@ import { onboardingRoutes } from '../src/routes/onboarding';
 import { approvalsRoutes, adminGovernanceRoutes } from '../src/routes/approvals';
 import { prisma } from '../src/config/prisma';
 import { hashPassword } from '../src/utils/password';
+import { signAccessToken } from '../src/utils/jwt';
 
 const app = new Elysia()
   .group('/api/v1', (app) =>
@@ -34,7 +35,7 @@ describe('Phase 8: Signup, Onboarding & Role Approval Flow API Tests', () => {
       },
     });
     testUserId = user.id;
-    testUserToken = `Bearer mock_jwt_token_${user.id}`;
+    testUserToken = `Bearer ${signAccessToken({ sub: user.id })}`;
 
     // Seed prerequisite Academic Year, Department, Course, Batch
     const acadYear = await prisma.academic_years.create({
@@ -271,7 +272,7 @@ describe('Phase 8: Signup, Onboarding & Role Approval Flow API Tests', () => {
 
   describe('3. Parent Link & Guardian Consent Flow', () => {
     let linkId: string;
-    const studentToken = `Bearer mock_jwt_token_${studentUserId}`;
+    const studentToken = `Bearer ${signAccessToken({ sub: studentUserId })}`;
 
     it('POST /api/v1/guardian-links - should request parent link', async () => {
       const studentUser = await prisma.users.findUnique({ where: { id: studentUserId } });
@@ -298,7 +299,7 @@ describe('Phase 8: Signup, Onboarding & Role Approval Flow API Tests', () => {
     it('GET /api/v1/me/guardian-requests - student should see link request', async () => {
       const res = await app.handle(
         new Request('http://localhost/api/v1/me/guardian-requests', {
-          headers: { Authorization: `Bearer mock_jwt_token_${studentUserId}` },
+          headers: { Authorization: `Bearer ${signAccessToken({ sub: studentUserId })}` },
         })
       );
       expect(res.status).toBe(200);
@@ -310,7 +311,7 @@ describe('Phase 8: Signup, Onboarding & Role Approval Flow API Tests', () => {
       const res = await app.handle(
         new Request(`http://localhost/api/v1/me/guardian-requests/${linkId}/confirm`, {
           method: 'POST',
-          headers: { Authorization: `Bearer mock_jwt_token_${studentUserId}` },
+          headers: { Authorization: `Bearer ${signAccessToken({ sub: studentUserId })}` },
         })
       );
       expect(res.status).toBe(200);
@@ -321,7 +322,7 @@ describe('Phase 8: Signup, Onboarding & Role Approval Flow API Tests', () => {
     it('GET /api/v1/me/guardians/:id/consents - student views and updates consents', async () => {
       const res = await app.handle(
         new Request(`http://localhost/api/v1/me/guardians/${testUserId}/consents`, {
-          headers: { Authorization: `Bearer mock_jwt_token_${studentUserId}` },
+          headers: { Authorization: `Bearer ${signAccessToken({ sub: studentUserId })}` },
         })
       );
       expect(res.status).toBe(200);

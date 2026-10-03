@@ -3,9 +3,12 @@ import { prisma } from '../config/prisma';
 import { hashPassword, verifyPassword } from '../utils/password';
 import { successResponse, errorResponse } from '../utils/response';
 import { jwtAuth } from '../middleware/auth';
+import { signAccessToken, signRefreshToken, verifyToken } from '../utils/jwt';
+import { createRateLimiter } from '../middleware/rate-limit';
 
 export const authRoutes = new Elysia({ prefix: '/auth' })
   .use(jwtAuth)
+  .use(createRateLimiter(15 * 60 * 1000, 10, 'auth_login'))
   /**
    * POST /api/v1/auth/login
    * Login with userCode (or email/phone) and password
@@ -78,7 +81,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           data: { last_login_at: new Date() },
         });
 
-        const token = `mock_jwt_token_${user.id}`;
+        const accessToken = signAccessToken({ sub: user.id, userCode: user.user_code || '' });
+        const refreshToken = signRefreshToken({ sub: user.id, userCode: user.user_code || '' });
         const clientIp = request.headers.get('x-forwarded-for') || '127.0.0.1';
 
         // Record audit log entry
@@ -99,7 +103,9 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
             fullName: user.full_name,
             status: user.status,
             preferredLanguage: user.preferred_language,
-            token,
+            token: accessToken,
+            accessToken,
+            refreshToken,
           },
           'Login successful'
         );
@@ -174,7 +180,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           data: { last_login_at: new Date() },
         });
 
-        const token = `mock_jwt_token_${user.id}`;
+        const accessToken = signAccessToken({ sub: user.id, userCode: user.user_code || '' });
+        const refreshToken = signRefreshToken({ sub: user.id, userCode: user.user_code || '' });
         const clientIp = request.headers.get('x-forwarded-for') || '127.0.0.1';
 
         await prisma.audit_logs.create({
@@ -194,7 +201,9 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
             fullName: user.full_name,
             status: user.status,
             preferredLanguage: user.preferred_language,
-            token,
+            token: accessToken,
+            accessToken,
+            refreshToken,
           },
           '2FA Login successful'
         );
@@ -693,7 +702,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           },
         });
 
-        const token = `mock_jwt_token_${newUser.id}`;
+        const accessToken = signAccessToken({ sub: newUser.id, userCode: newUser.user_code || '' });
+        const refreshToken = signRefreshToken({ sub: newUser.id, userCode: newUser.user_code || '' });
 
         return successResponse(
           {
@@ -701,7 +711,9 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
             userCode: newUser.user_code,
             fullName: newUser.full_name,
             status: newUser.status,
-            token,
+            token: accessToken,
+            accessToken,
+            refreshToken,
           },
           'Account registered successfully'
         );
@@ -784,13 +796,16 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           return errorResponse('INVALID_BACKUP_CODE', 'Invalid emergency backup code');
         }
 
-        const token = `mock_jwt_token_${user.id}`;
+        const accessToken = signAccessToken({ sub: user.id, userCode: user.user_code || '' });
+        const refreshToken = signRefreshToken({ sub: user.id, userCode: user.user_code || '' });
         return successResponse(
           {
             userId: user.id,
             userCode: user.user_code,
             fullName: user.full_name,
-            token,
+            token: accessToken,
+            accessToken,
+            refreshToken,
           },
           'Emergency backup code verified'
         );

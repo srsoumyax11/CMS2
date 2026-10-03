@@ -3,6 +3,7 @@ import { studentRoutes } from '../src/routes/student';
 import { Elysia } from 'elysia';
 import { prisma } from '../src/config/prisma';
 import { hashPassword } from '../src/utils/password';
+import { signAccessToken } from '../src/utils/jwt';
 
 const app = new Elysia().use(studentRoutes);
 
@@ -71,7 +72,7 @@ describe('Student API Routes (/api/v1/student)', () => {
       },
     });
     studentUserId = user.id;
-    token = `mock_jwt_token_${studentUserId}`;
+    token = signAccessToken({ sub: studentUserId });
 
     // 6. Create Student record
     await prisma.students.create({

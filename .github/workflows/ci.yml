@@ -1,0 +1,56 @@
+name: Backend CI / CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  build-and-test:
+    name: Type Check & Run Automated Test Suite
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: campus_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun Environment
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        working-directory: ./backend
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        working-directory: ./backend
+        run: bunx prisma generate
+
+      - name: Verify TypeScript Type Safety
+        working-directory: ./backend
+        run: bunx tsc --noEmit
+
+      - name: Run Full Test Suite
+        working-directory: ./backend
+        env:
+          DATABASE_URL: "postgresql://postgres:postgrespassword@localhost:5432/campus_db?schema=campus"
+          JWT_SECRET: "ci_pipeline_test_jwt_secret_key_32_characters"
+          JWT_REFRESH_SECRET: "ci_pipeline_test_jwt_refresh_secret_key_32_characters"
+        run: bun test

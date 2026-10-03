@@ -1,18 +1,20 @@
 # Project Rules & Workspace Guidelines
 
+> [!IMPORTANT]
+> **CURRENT SCOPE: BACKEND ONLY**
+> Frontend development is currently paused/out of scope. Focus exclusively on the Bun + ElysiaJS + Prisma + PostgreSQL backend under `backend/`.
+> 
+> **MANDATORY RULE**: ALWAYS make a structured implementation plan (in `tasks.md` or plan artifact) BEFORE writing any code.
+
 ## Tech Stack
-- **Frontend**: React Native + Expo (TypeScript) using Expo Router (App Router style)
-  - **State Management & Data Fetching**: `@tanstack/react-query` (React Query) for server state + `zustand` for lightweight local client state
-  - **UI & Styling**: Design System Tokens (`frontend/src/theme/tokens.ts` - Flat 2D Aesthetics) / NativeWind / Restyle
-  - **API Client**: `@elysiajs/eden` (Eden Treaty) for end-to-end type safety directly from the ElysiaJS backend
-  - **Testing**: Native Bun Test Runner (`bun test`) with `@testing-library/react-native`
 - **Backend**: Bun + ElysiaJS (TypeScript)
 - **Database & Auth**: Supabase (Local Docker via CLI) + Prisma ORM
 - **API Documentation**: `@elysiajs/swagger` at `/swagger`
 - **Testing**: `bun test` (Native Bun Test Runner)
+- **Frontend (PAUSED - OUT OF SCOPE FOR CURRENT PHASES)**: React Native + Expo (TypeScript)
+
 
 ## Core Architectural & Engineering Principles (MANDATORY)
-1. **YAGNI (You Aren't Gonna Need It)**: Do not write speculative code or unnecessary abstractions. Build exactly what is needed for the current active task.
 2. **DRY (Don't Repeat Yourself)**: Reuse shared utilities, Prisma types, shared UI elements (`components/ui/`), and error handling across routes, services, and views.
 3. **KISS (Keep It Simple, Stupid)**: Keep controller handlers and UI components thin, presentational, and straightforward. Delegate business logic to dedicated service layers or custom hooks (`useAuth`, `useWardenData`).
 4. **SOLID**:

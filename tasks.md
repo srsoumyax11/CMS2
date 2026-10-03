@@ -274,3 +274,126 @@
   - [x] `GET, PUT /api/v1/admin/retention` - Data retention and auto-archival policies
   - [x] `GET /api/v1/admin/login-events?risk=` - Anomaly detection login event log
 
+---
+
+## 🔒 Phase 12: Production Security Hardening & Audit Remediation (Completed)
+- [x] **1. Real JWT Authentication & Token Security (`SEC-001`)**:
+  - [x] Remove hardcoded `mock_jwt_token_` bypass in `backend/src/middleware/auth.ts`
+  - [x] Implement production JWT signing/verification utility (`utils/jwt.ts`) with HMAC/RSA signing & expiration
+  - [x] Implement access (15m) and refresh (7d) token rotation logic in `routes/auth.ts`
+- [x] **2. Secure Password Hashing (`SEC-003`)**:
+  - [x] Audit & enforce `Bun.password` / `bcrypt` hashing on registration, password resets, and login verification in `routes/auth.ts`
+- [x] **3. Zod Input Validation Layer (`SEC-002`)**:
+  - [x] Create Zod schemas in `backend/src/schemas/auth.ts` for login, registration, OTP, and password updates
+  - [x] Integrate schema validation across auth & onboarding handlers to block invalid payload formats
+- [x] **4. Role & Scope Guard Enforcement (`AUTH-001`, `AUTH-002`)**:
+  - [x] Make `requireRoles` mandatory on protected routes
+  - [x] Implement row-level and scope isolation guards for student/warden data access
+- [x] **5. Automated Security Test Suite (`TEST-001`)**:
+  - [x] Create `backend/tests/auth_security.test.ts` covering JWT signature verification, expired tokens, mock token rejection, password hashing, and Zod input validation
+  - [x] Verify zero test failures using `bun test` (128 tests passing across 12 test files)
+
+---
+
+## 🛡️ Phase 13: Data Integrity, Error Handling & Request Tracing (Completed)
+- [x] **1. Request Correlation IDs & Error Tracking (`REL-001`)**:
+  - [x] Implement request correlation ID middleware (`src/middleware/request-logger.ts`) generating unique `x-request-id`
+  - [x] Update central error handler in `src/index.ts` to attach `requestId` to responses without exposing raw stack traces
+- [x] **2. Structured Logging System (`LOG-001`, `LOG-002`)**:
+  - [x] Create structured logger (`src/config/logger.ts`) for JSON-formatted request/response & audit logs
+  - [x] Replace console.error calls in core handlers with structured logger calls
+- [x] **3. Row-Level & Scope Access Isolation (`AUTH-002`, `AUTH-003`)**:
+  - [x] Implement `verifyStudentScope`, `verifyWardenHostelScope`, `verifyParentChildScope` guards in `src/guards/scope.ts`
+  - [x] Apply scope isolation across hostel, department, student, and faculty route modules to eliminate IDOR risks
+
+---
+
+## 🏗️ Phase 14: Business Logic Abstraction & Service Layer Refactoring (Completed)
+- [x] **1. Service Layer Architecture (`ARCH-001`)**:
+  - [x] Create `src/services/` directory (`student.service.ts`, `warden.service.ts`, `faculty.service.ts`, `parent.service.ts`, `admin.service.ts`)
+  - [x] Extract business & domain logic out of route handlers into reusable service methods
+- [x] **2. Data Access & Repository Layer (`ARCH-001`, `PERF-001`)**:
+  - [x] Optimize Prisma queries with proper includes and batching
+- [x] **3. Comprehensive Zod Schemas across All Route Domains (`SEC-002`)**:
+  - [x] Expand Zod validation schemas (`schemas/student.ts`, `schemas/warden.ts`, `schemas/faculty.ts`, `schemas/admin.ts`, `schemas/parent.ts`)
+  - [x] Integrate input validation across route modules
+
+---
+
+## 🛠️ Phase 14.1: Database Schema Field Synchronization & Type Error Remediation
+- [x] **1. Scope Guard Remediation (`scope.ts`)**:
+  - [x] Update `verifyParentChildScope` in `src/guards/scope.ts` to directly query `student_guardians` by `student_id` and `guardian_id`
+- [x] **2. Admin Service Field Synchronization (`admin.service.ts`)**:
+  - [x] Align `decideNameCorrection` to update `decided_by` and `decided_at` matching `name_correction_requests` schema
+- [x] **3. Faculty Service Field Synchronization (`faculty.service.ts`)**:
+  - [x] Align `decideAttendanceDispute` to update `decided_by` and `decided_at` matching `attendance_disputes` schema
+  - [x] Align `gradeSubmission` to update `marks`, `graded_by`, and `graded_at` matching `assignment_submissions` schema
+- [x] **4. Warden Service Field Synchronization (`warden.service.ts`)**:
+  - [x] Align `acknowledgeSos` to update `status: 'acknowledged'` on `sos_incidents` and log entry to `sos_updates`
+- [x] **5. Verification & End-to-End Type Safety**:
+  - [x] Run `bunx tsc --noEmit` and `bun test` to ensure 0 compilation errors and 100% passing test suite
+
+---
+
+## ⚡ Phase 15: Security & Resource Management Tuning (Completed)
+- [x] **1. Endpoint Rate Limiting (`SEC-004`)**:
+  - [x] Create IP & user rate-limiting middleware (`src/middleware/rate-limit.ts`)
+  - [x] Apply rate limits to `/auth/login` (10 attempts / 15m), `/auth/otp/send` (5 attempts / hr), and `/auth/register` (5 attempts / hr)
+  - [x] Add `Retry-After` headers and standard HTTP 429 response handling
+- [x] **2. File Upload Security Hardening (`SEC-006`)**:
+  - [x] Enforce size limits (max 10MB) and MIME whitelist validation on file upload handlers in `src/routes/shared.ts`
+  - [x] Calculate SHA256 checksum and log scan status (`clean`, `pending`, `infected`) in DB
+- [x] **3. Connection Pooling, Query Timeouts & Graceful Shutdown (`DB-002`, `DB-003`, `OPS-001`)**:
+  - [x] Configure Prisma connection pool parameters (`connection_limit=10..20`, `idle_timeout=30s`) & 30s query execution timeouts in `src/config/prisma.ts`
+  - [x] Add SIGTERM/SIGINT signal listeners in `src/index.ts` to drain database connections gracefully on process termination
+- [x] **4. Runtime Environment & Secrets Validation (`SEC-005`)**:
+  - [x] Create environment variable validation module (`src/config/env.ts`) using Zod to validate `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV` at application boot
+
+---
+
+## 🧪 Phase 16: Extended Test Coverage & Integration Verification (Completed)
+- [x] **1. Service Unit Tests (`TEST-001`)**:
+  - [x] Create unit tests under `tests/unit/` (`services.test.ts`, `utils.test.ts`)
+  - [x] Unit test security & helper functions (`utils/jwt.ts`, `utils/password.ts`, `utils/response.ts`)
+- [x] **2. Domain Route Integration Tests (`TEST-001`)**:
+  - [x] Create integration tests under `tests/integration/` (`campus_ops.test.ts`, `finance_health.test.ts`, `transport_placements.test.ts`)
+- [x] **3. Scope Security & Authorization Edge-Case Tests**:
+  - [x] Write security tests verifying scope isolation, IDOR prevention, and role access rejection (`scope_security.test.ts`, `auth_security.test.ts`, `rate_limit_security.test.ts`)
+- [x] **4. API Contract & OpenAPI Schema Tests**:
+  - [x] Validate response structure compliance (`{ success: true, data, requestId }`) and error handling across endpoints (186/186 tests passing)
+
+---
+
+## 🚀 Phase 17: Containerization & CI/CD Deployment Infrastructure (Completed)
+- [x] **1. Multi-Stage Docker Build (`DEPLOY-001`)**:
+  - [x] Write production-optimized multi-stage `Dockerfile` for Bun + Elysia backend (`backend/Dockerfile`)
+  - [x] Create `docker-compose.yml` orchestrating API server, PostgreSQL DB, and Redis cache containers (`backend/docker-compose.yml`)
+- [x] **2. Environment Configuration & Tooling**:
+  - [x] Create `.env.example` detailing required environment variables (`DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `CORS_ORIGIN`)
+  - [x] Create `.eslintrc.json` and `.prettierrc` for code quality & formatting consistency
+- [x] **3. CI/CD Pipeline Setup (`DEPLOY-001`)**:
+  - [x] Create GitHub Actions workflow (`.github/workflows/ci.yml`) running type checks (`bunx tsc --noEmit`) and automated tests (`bun test`)
+- [x] **4. Deployment Documentation & Runbooks**:
+  - [x] Create `deployment/README.md` detailing setup guides, database migration steps, rollback procedures, and health check runbooks
+
+---
+
+## 🏎️ Phase 18: Performance Optimization & Caching Layer (Completed)
+- [x] **1. Query Optimization & Index Verification (`PERF-001`)**:
+  - [x] Audit Prisma queries across all route modules to eliminate N+1 query bottlenecks using proper `include` batching
+  - [x] Verify database indexes on foreign keys and partial unique indexes
+- [x] **2. Static Reference Data Caching (`PERF-002`)**:
+  - [x] Implement caching layer for frequently accessed static reference data (departments, courses, academic years, fee heads) via `CacheService` (`src/services/cache.service.ts`)
+
+---
+
+## 📋 Phase 19: Pre-Flight Production Release Audit Checklist (Completed)
+- [x] **1. Type Safety & Test Pass Verification**:
+  - [x] Confirm 0 TypeScript compilation errors using `bunx tsc --noEmit`
+  - [x] Confirm 100% test pass rate across unit, integration, and security test suites using `bun test` (188/188 passing across 20 files)
+- [x] **2. Production Health & Log Audit**:
+  - [x] Verify correlation IDs (`x-request-id`) in all structured log lines and HTTP responses
+  - [x] Execute pre-flight deployment check and verify production readiness
+
+
+

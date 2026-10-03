@@ -8,6 +8,7 @@ const app = new Elysia({ prefix: '/api/v1' })
   .use(onboardingRoutes);
 
 describe('User Registration Only (OTP Verification & Direct Login)', () => {
+  process.env.SKIP_RATE_LIMIT = 'true';
   const userEmail = `reg_user_${Date.now()}@campus7.edu`;
   const userPassword = 'Campus7UserPass123!';
   const userFullName = 'Sam Student';
@@ -30,7 +31,7 @@ describe('User Registration Only (OTP Verification & Direct Login)', () => {
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.otpId).toBeDefined();
     expect(json.data.devOtpHint).toBe('123456');
@@ -51,7 +52,7 @@ describe('User Registration Only (OTP Verification & Direct Login)', () => {
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.verified).toBe(true);
   });
@@ -71,7 +72,7 @@ describe('User Registration Only (OTP Verification & Direct Login)', () => {
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.userId).toBeDefined();
     expect(json.data.token).toBeDefined();
@@ -94,7 +95,7 @@ describe('User Registration Only (OTP Verification & Direct Login)', () => {
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.requires2FA).toBeUndefined();
     expect(json.data.token).toBeDefined();
@@ -114,7 +115,7 @@ describe('User Registration Only (OTP Verification & Direct Login)', () => {
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.userId).toBe(userId);
     expect(json.data.status).toBe('active');

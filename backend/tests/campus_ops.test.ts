@@ -5,6 +5,7 @@ import { financeHealthRoutes } from '../src/routes/finance_health';
 import { transportPlacementsRoutes } from '../src/routes/transport_placements';
 import { prisma } from '../src/config/prisma';
 import { hashPassword } from '../src/utils/password';
+import { signAccessToken } from '../src/utils/jwt';
 
 const app = new Elysia()
   .group('/api/v1', (app) =>
@@ -36,7 +37,7 @@ describe('Phases 9, 10 & 11: Extended Campus Operations & Governance API Tests',
       },
     });
     testUserId = user.id;
-    testUserToken = `Bearer mock_jwt_token_${user.id}`;
+    testUserToken = `Bearer ${signAccessToken({ sub: user.id })}`;
 
     const recipient = await prisma.users.create({
       data: {

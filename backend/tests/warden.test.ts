@@ -3,6 +3,7 @@ import { wardenRoutes } from '../src/routes/warden';
 import { Elysia } from 'elysia';
 import { prisma } from '../src/config/prisma';
 import { hashPassword } from '../src/utils/password';
+import { signAccessToken } from '../src/utils/jwt';
 
 const app = new Elysia().use(wardenRoutes);
 
@@ -30,7 +31,7 @@ describe('Warden API Routes (/api/v1/warden)', () => {
       },
     });
     wardenUserId = warden.id;
-    wardenToken = `mock_jwt_token_${wardenUserId}`;
+    wardenToken = signAccessToken({ sub: wardenUserId });
 
     // 2. Create Student User & Record
     const acadYear = await prisma.academic_years.create({

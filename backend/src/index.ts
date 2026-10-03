@@ -12,9 +12,14 @@ import { facultyRoutes } from './routes/faculty';
 import { parentRoutes } from './routes/parent';
 import { adminRoutes } from './routes/admin';
 import { sharedRoutes } from './routes/shared';
-import { prisma } from './config/prisma';
+import { disconnectPrisma, prisma } from './config/prisma';
+import { requestLogger } from './middleware/request-logger';
+import { logger } from './config/logger';
+
+const PORT = Number(process.env.PORT) || 3000;
 
 const app = new Elysia()
+  .use(requestLogger)
   .use(
     swagger({
       documentation: {
@@ -52,19 +57,39 @@ const app = new Elysia()
       },
     })
   )
-  .onError(({ code, error, set }) => {
+  .onError(({ code, error, set, requestId }) => {
+    const errorId = requestId || crypto.randomUUID();
     if (code === 'NOT_FOUND') {
       set.status = 404;
-      return { success: false, error: 'Route not found. Make sure to use /api/v1 prefix and correct HTTP method.' };
+      return {
+        success: false,
+        error: 'Route not found. Make sure to use /api/v1 prefix and correct HTTP method.',
+        requestId: errorId,
+      };
     }
     if (code === 'VALIDATION') {
       set.status = 400;
-      return { success: false, error: error.message || 'Validation error' };
+      return {
+        success: false,
+        error: error.message || 'Validation error',
+        requestId: errorId,
+      };
     }
-    console.error(`[Error] ${code}:`, error);
-    set.status = 500;
+
     const msg = error && typeof error === 'object' && 'message' in error ? (error as any).message : String(error);
-    return { success: false, error: msg };
+
+    logger.error({
+      message: `[Unhandled Error] ${code}: ${msg}`,
+      requestId: errorId,
+      meta: { code, stack: error instanceof Error ? error.stack : undefined },
+    });
+
+    set.status = 500;
+    return {
+      success: false,
+      error: msg,
+      requestId: errorId,
+    };
   })
   .get('/', () => {
     return {
@@ -107,7 +132,21 @@ const app = new Elysia()
       .use(adminRoutes)
       .use(sharedRoutes)
   )
-  .listen(3000);
+  .listen(PORT);
 
-console.log(`🦊 Elysia API is running at http://${app.server?.hostname}:${app.server?.port}`);
-console.log(`📚 Interactive Swagger API Docs available at http://${app.server?.hostname}:${app.server?.port}/swagger`);
+logger.info({
+  message: `Elysia API is running at http://${app.server?.hostname}:${app.server?.port}`,
+});
+logger.info({
+  message: `Interactive Swagger API Docs available at http://${app.server?.hostname}:${app.server?.port}/swagger`,
+});
+
+const handleShutdown = async (signal: string) => {
+  logger.info({ message: `Received ${signal}. Shutting down server gracefully...` });
+  await disconnectPrisma();
+  process.exit(0);
+};
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));
+

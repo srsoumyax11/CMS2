@@ -3,6 +3,7 @@ import { facultyRoutes } from '../src/routes/faculty';
 import { Elysia } from 'elysia';
 import { prisma } from '../src/config/prisma';
 import { hashPassword } from '../src/utils/password';
+import { signAccessToken } from '../src/utils/jwt';
 
 const app = new Elysia().use(facultyRoutes);
 
@@ -109,7 +110,7 @@ describe('Faculty API Routes (/api/v1/faculty)', () => {
       },
     });
     facultyUserId = facultyUser.id;
-    facultyToken = `mock_jwt_token_${facultyUserId}`;
+    facultyToken = signAccessToken({ sub: facultyUserId });
 
     await prisma.staff.create({
       data: {

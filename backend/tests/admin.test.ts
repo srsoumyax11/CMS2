@@ -3,6 +3,7 @@ import { adminRoutes } from '../src/routes/admin';
 import { Elysia } from 'elysia';
 import { prisma } from '../src/config/prisma';
 import { hashPassword } from '../src/utils/password';
+import { signAccessToken } from '../src/utils/jwt';
 
 const app = new Elysia().use(adminRoutes);
 
@@ -14,7 +15,6 @@ describe('Admin API Routes (/api/v1/admin)', () => {
   let createdDeptId: string;
   let createdCourseId: string;
   let testNameCorrId: string;
-
   beforeAll(async () => {
     const passwordHash = await hashPassword('AdminPass123!');
 
@@ -30,7 +30,7 @@ describe('Admin API Routes (/api/v1/admin)', () => {
       },
     });
     adminUserId = adminUser.id;
-    adminToken = `mock_jwt_token_${adminUserId}`;
+    adminToken = signAccessToken({ sub: adminUserId });
 
     // 2. Create Target User (to freeze)
     const targetUser = await prisma.users.create({

@@ -15,6 +15,26 @@ export const sharedRoutes = new Elysia()
       try {
         const { fileName, mimeType, sizeBytes } = body;
 
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        const ALLOWED_MIME_TYPES = [
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+
+        if (sizeBytes > MAX_FILE_SIZE) {
+          set.status = 400;
+          return errorResponse('FILE_TOO_LARGE', 'File size exceeds maximum allowed limit of 10MB');
+        }
+
+        if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+          set.status = 400;
+          return errorResponse('INVALID_MIME_TYPE', 'Unsupported file format. Only JPEG, PNG, WEBP, PDF, and DOCX files are allowed.');
+        }
+
         const fileId = crypto.randomUUID();
         const storageKey = `uploads/${new Date().getFullYear()}/${fileId}-${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 

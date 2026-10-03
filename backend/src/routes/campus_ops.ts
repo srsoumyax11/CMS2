@@ -61,7 +61,6 @@ export const campusOpsRoutes = new Elysia()
         data: {
           id: crypto.randomUUID(),
           academic_year_id: body.academicYearId,
-          code: body.code,
           name: body.name,
           start_date: new Date(body.startDate),
           end_date: new Date(body.endDate),

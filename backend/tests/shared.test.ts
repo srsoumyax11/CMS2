@@ -2,6 +2,7 @@ import { describe, expect, it, beforeAll } from 'bun:test';
 import { sharedRoutes } from '../src/routes/shared';
 import { Elysia } from 'elysia';
 import { prisma } from '../src/config/prisma';
+import { signAccessToken } from '../src/utils/jwt';
 
 const app = new Elysia().use(sharedRoutes);
 
@@ -22,7 +23,7 @@ describe('Shared Platform Services API Routes', () => {
       },
     });
     userId = user.id;
-    userToken = `mock_jwt_token_${userId}`;
+    userToken = signAccessToken({ sub: userId });
 
     // Create student setup for payments
     const acadYear = await prisma.academic_years.create({

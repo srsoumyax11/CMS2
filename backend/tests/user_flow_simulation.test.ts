@@ -8,6 +8,7 @@ const app = new Elysia({ prefix: '/api/v1' })
   .use(onboardingRoutes);
 
 describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simulation', () => {
+  process.env.SKIP_RATE_LIMIT = 'true';
   const userEmail = `sim_user_${Date.now()}@campus7.edu`;
   const userPassword = 'Campus7UserPass!';
   const userFullName = 'Alex Rivera';
@@ -31,7 +32,7 @@ describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simu
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.otpId).toBeDefined();
     expect(json.data.devOtpHint).toBe('123456');
@@ -52,7 +53,7 @@ describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simu
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.verified).toBe(true);
   });
@@ -72,7 +73,7 @@ describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simu
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.userId).toBeDefined();
     expect(json.data.userCode).toBeDefined();
@@ -96,7 +97,7 @@ describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simu
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.requires2FA).toBeUndefined();
     expect(json.data.token).toBeDefined();
@@ -114,7 +115,7 @@ describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simu
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.userId).toBe(userId);
     expect(json.data.status).toBe('active');
@@ -132,7 +133,7 @@ describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simu
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.mfaEnabled).toBe(true);
   });
@@ -150,7 +151,7 @@ describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simu
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.requires2FA).toBe(true);
     expect(json.data.otpId).toBeDefined();
@@ -174,7 +175,7 @@ describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simu
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.token).toBeDefined();
     expect(json.data.userId).toBe(userId);
@@ -194,7 +195,7 @@ describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simu
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(Array.isArray(json.data)).toBe(true);
     expect(json.data.length).toBeGreaterThan(0);
@@ -211,7 +212,7 @@ describe('Real-World End-to-End User Registration & 2FA Authentication Flow Simu
     const res = await app.handle(req);
     expect(res.status).toBe(200);
 
-    const json = await res.json();
+    const json = (await res.json()) as any;
     expect(json.success).toBe(true);
     expect(json.data.userId).toBe(userId);
   });

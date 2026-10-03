@@ -3,6 +3,7 @@ import { authRoutes } from '../src/routes/auth';
 import { Elysia } from 'elysia';
 import { prisma } from '../src/config/prisma';
 import { hashPassword } from '../src/utils/password';
+import { signAccessToken } from '../src/utils/jwt';
 
 const app = new Elysia().use(authRoutes);
 
@@ -13,6 +14,7 @@ describe('Auth API Routes (/api/v1/auth)', () => {
   let testUserId: string;
 
   beforeAll(async () => {
+    process.env.SKIP_RATE_LIMIT = 'true';
     // Seed a test active user in the database
     const passwordHash = await hashPassword(testPassword);
     const user = await prisma.users.create({
@@ -217,7 +219,7 @@ describe('Auth API Routes (/api/v1/auth)', () => {
         new Request('http://localhost/auth/devices', {
           method: 'GET',
           headers: {
-            Authorization: `Bearer mock_jwt_token_${testUserId}`,
+            Authorization: `Bearer ${signAccessToken({ sub: testUserId })}`,
           },
         })
       );
@@ -243,7 +245,7 @@ describe('Auth API Routes (/api/v1/auth)', () => {
         new Request('http://localhost/auth/logout', {
           method: 'POST',
           headers: {
-            Authorization: `Bearer mock_jwt_token_${testUserId}`,
+            Authorization: `Bearer ${signAccessToken({ sub: testUserId })}`,
           },
         })
       );
@@ -260,7 +262,7 @@ describe('Auth API Routes (/api/v1/auth)', () => {
         new Request(`http://localhost/auth/devices/${deviceId}`, {
           method: 'DELETE',
           headers: {
-            Authorization: `Bearer mock_jwt_token_${testUserId}`,
+            Authorization: `Bearer ${signAccessToken({ sub: testUserId })}`,
           },
         })
       );
@@ -381,7 +383,7 @@ describe('Auth API Routes (/api/v1/auth)', () => {
         new Request('http://localhost/auth/login-alerts', {
           method: 'GET',
           headers: {
-            Authorization: `Bearer mock_jwt_token_${testUserId}`,
+            Authorization: `Bearer ${signAccessToken({ sub: testUserId })}`,
           },
         })
       );
