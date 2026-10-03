@@ -52,6 +52,7 @@
   - [x] `GET /api/v1/auth/devices` & `DELETE /api/v1/auth/devices/{id}` - List and force logout devices
   - [x] `GET /api/v1/auth/login-alerts` - Odd login history and security alerts
   - [x] `user_flow_simulation.test.ts` - Real-world end-to-end user registration & 2FA authentication flow simulation script
+  - [x] `registration_flow.test.ts` - Standard OTP registration and direct login test script
 
 ---
 

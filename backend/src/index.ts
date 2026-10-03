@@ -53,6 +53,14 @@ const app = new Elysia()
     })
   )
   .onError(({ code, error, set }) => {
+    if (code === 'NOT_FOUND') {
+      set.status = 404;
+      return { success: false, error: 'Route not found. Make sure to use /api/v1 prefix and correct HTTP method.' };
+    }
+    if (code === 'VALIDATION') {
+      set.status = 400;
+      return { success: false, error: error.message || 'Validation error' };
+    }
     console.error(`[Error] ${code}:`, error);
     set.status = 500;
     const msg = error && typeof error === 'object' && 'message' in error ? (error as any).message : String(error);
