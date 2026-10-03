@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia';
 import { prisma } from '../config/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 import { jwtAuth } from '../middleware/auth';
+import { realtimePubSub, type LocationTelemetryPayload } from '../utils/pubsub';
 
 export const transportPlacementsRoutes = new Elysia()
   .use(jwtAuth)
@@ -50,11 +51,42 @@ export const transportPlacementsRoutes = new Elysia()
   })
 
   .post('/driver/vehicles/:id/location', async ({ params, body, set }) => {
-    return successResponse({ vehicleId: params.id, latitude: body.latitude, longitude: body.longitude, timestamp: new Date() }, 'Live location updated');
+    const telemetry: LocationTelemetryPayload = {
+      vehicleId: params.id,
+      latitude: body.latitude,
+      longitude: body.longitude,
+      timestamp: new Date().toISOString(),
+    };
+    realtimePubSub.publishLocationUpdate(telemetry);
+    return successResponse(telemetry, 'Live location updated');
   }, {
     params: t.Object({ id: t.String({ format: 'uuid' }) }),
     body: t.Object({ latitude: t.Number(), longitude: t.Number() }),
     detail: { tags: ['Transport Fleet'], summary: 'Broadcast live driver vehicle GPS telemetry' },
+  })
+
+  .ws('/driver/vehicles/:id/location', {
+    open(ws) {
+      const vehicleId = (ws.data.params as any)?.id;
+      const listener = (data: LocationTelemetryPayload) => {
+        ws.send(data);
+      };
+      (ws as any)._listener = listener;
+      if (vehicleId) {
+        realtimePubSub.on(`location:${vehicleId}`, listener);
+      }
+      realtimePubSub.on('location:broadcast', listener);
+    },
+    close(ws) {
+      const vehicleId = (ws.data.params as any)?.id;
+      const listener = (ws as any)._listener;
+      if (listener) {
+        if (vehicleId) {
+          realtimePubSub.off(`location:${vehicleId}`, listener);
+        }
+        realtimePubSub.off('location:broadcast', listener);
+      }
+    },
   })
 
   // -------------------------------------------------------------

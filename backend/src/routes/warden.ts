@@ -3,6 +3,7 @@ import { prisma } from '../config/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 import { jwtAuth } from '../middleware/auth';
 import { hashPassword } from '../utils/password';
+import { realtimePubSub, type SOSEventPayload } from '../utils/pubsub';
 
 export const wardenRoutes = new Elysia({ prefix: '/warden' })
   .use(jwtAuth)
@@ -263,6 +264,26 @@ export const wardenRoutes = new Elysia({ prefix: '/warden' })
       },
     }
   )
+
+  /**
+   * WS /api/v1/warden/sos/stream
+   * Real-time WebSocket push notifications for SOS alerts
+   */
+  .ws('/sos/stream', {
+    open(ws) {
+      const listener = (data: SOSEventPayload) => {
+        ws.send(data);
+      };
+      (ws as any)._listener = listener;
+      realtimePubSub.on('sos:alert', listener);
+    },
+    close(ws) {
+      const listener = (ws as any)._listener;
+      if (listener) {
+        realtimePubSub.off('sos:alert', listener);
+      }
+    },
+  })
 
   /**
    * POST /api/v1/warden/sos/:id/acknowledge

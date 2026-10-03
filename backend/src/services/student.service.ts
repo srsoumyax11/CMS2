@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma';
+import { realtimePubSub } from '../utils/pubsub';
 
 export class StudentService {
   async getStudentProfile(userId: string) {
@@ -156,7 +157,7 @@ export class StudentService {
   }
 
   async triggerSos(userId: string, data: { latitude?: number; longitude?: number; source?: string }) {
-    return await prisma.sos_incidents.create({
+    const incident = await prisma.sos_incidents.create({
       data: {
         id: crypto.randomUUID(),
         student_id: userId,
@@ -168,6 +169,17 @@ export class StudentService {
         status: 'open',
       },
     });
+
+    realtimePubSub.publishSOSEvent({
+      incidentId: incident.id,
+      studentId: userId,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      timestamp: incident.created_at ? incident.created_at.toISOString() : new Date().toISOString(),
+      status: 'active',
+    });
+
+    return incident;
   }
 }
 

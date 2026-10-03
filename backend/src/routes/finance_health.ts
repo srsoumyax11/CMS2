@@ -208,6 +208,44 @@ export const financeHealthRoutes = new Elysia()
     detail: { tags: ['Safety & Health'], summary: 'Open a safety case' },
   })
 
+  .post('/safety/reports/anonymous', async ({ body, set }) => {
+    try {
+      const report = await prisma.safety_cases.create({
+        data: {
+          id: crypto.randomUUID(),
+          case_no: `ANON-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          category: ['ragging', 'harassment', 'faculty', 'discipline', 'other'].includes(body.category) ? body.category : 'other',
+          summary: `[Anonymous Report] ${body.title}\n\nDetails: ${body.incidentDetails}${body.location ? `\nLocation: ${body.location}` : ''}`,
+          complainant_id: null,
+          status: 'open',
+        },
+      });
+
+      return successResponse(
+        {
+          caseNo: report.case_no,
+          category: report.category,
+          status: report.status,
+          createdAt: report.created_at,
+          isAnonymous: true,
+        },
+        'Anonymous safety report submitted successfully. Your identity is completely protected.'
+      );
+    } catch (error) {
+      set.status = 500;
+      return errorResponse('CREATE_FAILED', error instanceof Error ? error.message : 'Failed to submit anonymous report');
+    }
+  }, {
+    body: t.Object({
+      title: t.String({ minLength: 3 }),
+      category: t.String(),
+      incidentDetails: t.String({ minLength: 10 }),
+      location: t.Optional(t.String()),
+      evidenceUrl: t.Optional(t.String()),
+    }),
+    detail: { tags: ['Safety & Health'], summary: 'Submit an anonymous safety or disciplinary report' },
+  })
+
   .get('/counselling/slots', async ({ set }) => {
     try {
       const slots = await prisma.counselling_bookings.findMany({ where: { status: 'booked' } });
