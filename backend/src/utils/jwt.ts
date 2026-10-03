@@ -24,7 +24,7 @@ export const signAccessToken = (payload: Omit<TokenPayload, 'type'>): string => 
  */
 export const signRefreshToken = (payload: Omit<TokenPayload, 'type'>): string => {
   return jwt.sign(
-    { ...payload, type: 'refresh' },
+    { ...payload, jti: crypto.randomUUID(), type: 'refresh' },
     env.JWT_REFRESH_SECRET,
     { expiresIn: env.REFRESH_TOKEN_EXPIRES_IN as any }
   );
@@ -33,16 +33,20 @@ export const signRefreshToken = (payload: Omit<TokenPayload, 'type'>): string =>
 /**
  * Verifies a JWT token and returns payload if valid
  */
-export const verifyToken = (token: string): TokenPayload | null => {
+export const verifyToken = (token: string, secret?: string): TokenPayload | null => {
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
+    const key = secret || env.JWT_SECRET;
+    const decoded = jwt.verify(token, key) as TokenPayload;
     return decoded;
   } catch (error) {
-    try {
-      const decoded = jwt.verify(token, env.JWT_REFRESH_SECRET) as TokenPayload;
-      return decoded;
-    } catch {
-      return null;
+    if (!secret) {
+      try {
+        const decoded = jwt.verify(token, env.JWT_REFRESH_SECRET) as TokenPayload;
+        return decoded;
+      } catch {
+        return null;
+      }
     }
+    return null;
   }
 };

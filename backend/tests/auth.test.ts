@@ -3,7 +3,8 @@ import { authRoutes } from '../src/routes/auth';
 import { Elysia } from 'elysia';
 import { prisma } from '../src/config/prisma';
 import { hashPassword } from '../src/utils/password';
-import { signAccessToken } from '../src/utils/jwt';
+import { signAccessToken, signRefreshToken } from '../src/utils/jwt';
+import { hashRefreshToken } from '../src/utils/session';
 
 const app = new Elysia().use(authRoutes);
 
@@ -346,16 +347,27 @@ describe('Auth API Routes (/api/v1/auth)', () => {
     });
 
     it('should refresh access token', async () => {
+      const validRefreshToken = signRefreshToken({ sub: testUserId, userCode: testUserCode });
+      const hash = hashRefreshToken(validRefreshToken);
+      await prisma.auth_sessions.create({
+        data: {
+          id: crypto.randomUUID(),
+          user_id: testUserId,
+          refresh_token_hash: hash,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+
       const res = await app.handle(
         new Request('http://localhost/auth/token/refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken: 'mock_refresh_token_123' }),
+          body: JSON.stringify({ refreshToken: validRefreshToken }),
         })
       );
 
       expect(res.status).toBe(200);
-      const json = await res.json() as any;
+      const json = (await res.json()) as any;
       expect(json.success).toBe(true);
       expect(json.data.token).toBeDefined();
     });

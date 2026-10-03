@@ -1,10 +1,18 @@
 import { Elysia, t } from 'elysia';
 import { prisma } from '../config/prisma';
+import { env } from '../config/env';
 import { hashPassword, verifyPassword } from '../utils/password';
 import { successResponse, errorResponse } from '../utils/response';
 import { jwtAuth } from '../middleware/auth';
 import { signAccessToken, signRefreshToken, verifyToken } from '../utils/jwt';
 import { createRateLimiter } from '../middleware/rate-limit';
+import {
+  hashRefreshToken,
+  parseCookies,
+  setWebRefreshCookie,
+  clearWebRefreshCookie,
+  issueAuthSession,
+} from '../utils/session';
 
 export const authRoutes = new Elysia({ prefix: '/auth' })
   .use(jwtAuth)
@@ -81,9 +89,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           data: { last_login_at: new Date() },
         });
 
-        const accessToken = signAccessToken({ sub: user.id, userCode: user.user_code || '' });
-        const refreshToken = signRefreshToken({ sub: user.id, userCode: user.user_code || '' });
-        const clientIp = request.headers.get('x-forwarded-for') || '127.0.0.1';
+        const headerIp = request?.headers ? (request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')) : null;
+        const clientIp = (headerIp || '127.0.0.1').split(',')[0]!.trim();
 
         // Record audit log entry
         await prisma.audit_logs.create({
@@ -96,6 +103,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           },
         });
 
+        const sessionTokens = await issueAuthSession({ user, request, set });
+
         return successResponse(
           {
             userId: user.id,
@@ -103,9 +112,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
             fullName: user.full_name,
             status: user.status,
             preferredLanguage: user.preferred_language,
-            token: accessToken,
-            accessToken,
-            refreshToken,
+            ...sessionTokens,
           },
           'Login successful'
         );
@@ -180,9 +187,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           data: { last_login_at: new Date() },
         });
 
-        const accessToken = signAccessToken({ sub: user.id, userCode: user.user_code || '' });
-        const refreshToken = signRefreshToken({ sub: user.id, userCode: user.user_code || '' });
-        const clientIp = request.headers.get('x-forwarded-for') || '127.0.0.1';
+        const headerIp = request?.headers ? (request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')) : null;
+        const clientIp = (headerIp || '127.0.0.1').split(',')[0]!.trim();
 
         await prisma.audit_logs.create({
           data: {
@@ -194,6 +200,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           },
         });
 
+        const sessionTokens = await issueAuthSession({ user, request, set });
+
         return successResponse(
           {
             userId: user.id,
@@ -201,9 +209,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
             fullName: user.full_name,
             status: user.status,
             preferredLanguage: user.preferred_language,
-            token: accessToken,
-            accessToken,
-            refreshToken,
+            ...sessionTokens,
           },
           '2FA Login successful'
         );
@@ -440,22 +446,46 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
    */
   .post(
     '/logout',
-    async ({ user, set }) => {
-      if (!user) {
+    async ({ user, set, request }) => {
+      const isWebClient = request.headers.get('x-client')?.toLowerCase() === 'web';
+      const cookieHeader = request.headers.get('cookie');
+      const cookies = parseCookies(cookieHeader);
+      const cookieToken = cookies['refresh_token'];
+
+      if (!user && !cookieToken) {
         set.status = 401;
         return errorResponse('UNAUTHORIZED', 'Missing or invalid token');
       }
 
-      await prisma.audit_logs.create({
-        data: {
-          actor_user_id: user.id,
-          action: 'USER_LOGOUT',
-          entity_type: 'users',
-          entity_id: user.id,
-        },
-      });
+      if (cookieToken) {
+        const tokenHash = hashRefreshToken(cookieToken);
+        await prisma.auth_sessions.updateMany({
+          where: { refresh_token_hash: tokenHash, revoked_at: null },
+          data: { revoked_at: new Date() },
+        });
+      }
 
-      return successResponse({ userId: user.id }, 'Logged out successfully');
+      if (user) {
+        await prisma.auth_sessions.updateMany({
+          where: { user_id: user.id, revoked_at: null },
+          data: { revoked_at: new Date() },
+        });
+
+        await prisma.audit_logs.create({
+          data: {
+            actor_user_id: user.id,
+            action: 'USER_LOGOUT',
+            entity_type: 'users',
+            entity_id: user.id,
+          },
+        });
+      }
+
+      if (isWebClient || cookieToken) {
+        clearWebRefreshCookie(set);
+      }
+
+      return successResponse({ userId: user?.id || null }, 'Logged out successfully');
     },
     {
       detail: {
@@ -660,7 +690,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
    */
   .post(
     '/register',
-    async ({ body, set }) => {
+    async ({ body, set, request }) => {
       try {
         const { target, password, fullName, otpId } = body;
 
@@ -702,8 +732,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           },
         });
 
-        const accessToken = signAccessToken({ sub: newUser.id, userCode: newUser.user_code || '' });
-        const refreshToken = signRefreshToken({ sub: newUser.id, userCode: newUser.user_code || '' });
+        const sessionTokens = await issueAuthSession({ user: newUser, request, set });
 
         return successResponse(
           {
@@ -711,9 +740,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
             userCode: newUser.user_code,
             fullName: newUser.full_name,
             status: newUser.status,
-            token: accessToken,
-            accessToken,
-            refreshToken,
+            ...sessionTokens,
           },
           'Account registered successfully'
         );
@@ -740,27 +767,155 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
    * POST /api/v1/auth/token/refresh
    * Refresh JWT access token
    */
+  .use(createRateLimiter(15 * 60 * 1000, 20, 'auth_refresh'))
   .post(
     '/token/refresh',
-    async ({ body, set }) => {
+    async ({ body, set, request }) => {
       try {
-        const { refreshToken } = body;
+        const xClient = request.headers.get('x-client')?.toLowerCase();
+        const cookieHeader = request.headers.get('cookie');
+        const cookies = parseCookies(cookieHeader);
+        const cookieToken = cookies['refresh_token'];
+        const bodyToken = body?.refreshToken;
+
+        const isCookieRefresh = Boolean(cookieToken);
+        const isWebClient = xClient === 'web';
+
+        // CSRF Check for Cookie-based / Web Refresh
+        if (isCookieRefresh || isWebClient) {
+          if (!isWebClient) {
+            set.status = 400;
+            return errorResponse('CSRF_ERROR', "Header 'x-client: web' is required for web cookie refresh");
+          }
+
+          const origin = request.headers.get('origin')?.toLowerCase();
+          const allowedOrigins = env.CORS_ORIGINS.split(',').map((o) => o.trim().toLowerCase());
+
+          if (!origin || !allowedOrigins.includes(origin)) {
+            set.status = 403;
+            return errorResponse('CSRF_ERROR', 'Invalid or missing Origin header for web refresh');
+          }
+        }
+
+        const refreshToken = cookieToken || bodyToken;
         if (!refreshToken) {
           set.status = 400;
           return errorResponse('INVALID_TOKEN', 'Refresh token is required');
         }
 
-        const token = `refreshed_jwt_token_${Date.now()}`;
-        return successResponse({ token }, 'Token refreshed successfully');
+        // 1. Verify JWT signature
+        let payload: any;
+        try {
+          payload = verifyToken(refreshToken, env.JWT_REFRESH_SECRET);
+        } catch {
+          if (isWebClient) clearWebRefreshCookie(set);
+          set.status = 401;
+          return errorResponse('INVALID_TOKEN', 'Invalid or expired refresh token');
+        }
+
+        const tokenHash = hashRefreshToken(refreshToken);
+        const headerIp = request?.headers ? (request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')) : null;
+        const clientIp = (headerIp || '127.0.0.1').split(',')[0]!.trim();
+
+        // 2. Query session in DB
+        const session = await prisma.auth_sessions.findUnique({
+          where: { refresh_token_hash: tokenHash },
+        });
+
+        // REUSE DETECTION: If session exists and revoked_at is not null
+        if (session && session.revoked_at !== null) {
+          // REVOKE ALL active sessions for this user!
+          await prisma.auth_sessions.updateMany({
+            where: { user_id: session.user_id, revoked_at: null },
+            data: { revoked_at: new Date() },
+          });
+
+          // Log security event
+          await prisma.audit_logs.create({
+            data: {
+              actor_user_id: session.user_id,
+              action: 'REFRESH_TOKEN_REUSE_DETECTED',
+              entity_type: 'auth_sessions',
+              entity_id: session.id,
+              ip_address: clientIp,
+            },
+          });
+
+          if (isWebClient) clearWebRefreshCookie(set);
+          set.status = 401;
+          return errorResponse('TOKEN_REUSE_DETECTED', 'Refresh token reuse detected. All sessions have been revoked.');
+        }
+
+        // If session not found or expired
+        if (!session || new Date() > session.expires_at) {
+          if (isWebClient) clearWebRefreshCookie(set);
+          set.status = 401;
+          return errorResponse('INVALID_TOKEN', 'Session expired or invalid refresh token');
+        }
+
+        const user = await prisma.users.findUnique({
+          where: { id: session.user_id },
+        });
+
+        if (!user || user.status === 'frozen' || user.status === 'archived') {
+          if (isWebClient) clearWebRefreshCookie(set);
+          set.status = 403;
+          return errorResponse('ACCOUNT_SUSPENDED', 'Account is suspended or invalid');
+        }
+
+        // 3. Rotate token (revoking current session, creating new active session)
+        await prisma.auth_sessions.update({
+          where: { id: session.id },
+          data: { revoked_at: new Date() },
+        });
+
+        const newAccessToken = signAccessToken({ sub: user.id, userCode: user.user_code || '' });
+        const newRefreshToken = signRefreshToken({ sub: user.id, userCode: user.user_code || '' });
+
+        const newHash = hashRefreshToken(newRefreshToken);
+        const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+        await prisma.auth_sessions.create({
+          data: {
+            id: crypto.randomUUID(),
+            user_id: user.id,
+            device_id: session.device_id,
+            refresh_token_hash: newHash,
+            ip_address: clientIp,
+            expires_at: newExpiresAt,
+          },
+        });
+
+        if (isWebClient) {
+          setWebRefreshCookie(set, newRefreshToken);
+          return successResponse(
+            {
+              token: newAccessToken,
+              accessToken: newAccessToken,
+            },
+            'Token refreshed successfully'
+          );
+        } else {
+          return successResponse(
+            {
+              token: newAccessToken,
+              accessToken: newAccessToken,
+              refreshToken: newRefreshToken,
+            },
+            'Token refreshed successfully'
+          );
+        }
       } catch (error) {
         set.status = 500;
-        return errorResponse('REFRESH_FAILED', 'Failed to refresh token');
+        return errorResponse('REFRESH_FAILED', error instanceof Error ? error.message : 'Failed to refresh token');
       }
     },
     {
-      body: t.Object({
-        refreshToken: t.String(),
-      }),
+      body: t.Optional(
+        t.Object({
+          refreshToken: t.Optional(t.String()),
+        })
+      ),
       detail: {
         tags: ['Authentication'],
         summary: 'Refresh access token',
@@ -774,7 +929,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
    */
   .post(
     '/backup-code/verify',
-    async ({ body, set }) => {
+    async ({ body, set, request }) => {
       try {
         const { identity, backupCode } = body;
 
@@ -796,16 +951,14 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           return errorResponse('INVALID_BACKUP_CODE', 'Invalid emergency backup code');
         }
 
-        const accessToken = signAccessToken({ sub: user.id, userCode: user.user_code || '' });
-        const refreshToken = signRefreshToken({ sub: user.id, userCode: user.user_code || '' });
+        const sessionTokens = await issueAuthSession({ user, request, set });
+
         return successResponse(
           {
             userId: user.id,
             userCode: user.user_code,
             fullName: user.full_name,
-            token: accessToken,
-            accessToken,
-            refreshToken,
+            ...sessionTokens,
           },
           'Emergency backup code verified'
         );

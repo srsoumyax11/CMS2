@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia';
 import { swagger } from '@elysiajs/swagger';
+import { cors } from '@elysiajs/cors';
 import { authRoutes } from './routes/auth';
 import { onboardingRoutes } from './routes/onboarding';
 import { approvalsRoutes, adminGovernanceRoutes } from './routes/approvals';
@@ -19,10 +20,19 @@ import { env } from './config/env';
 import { sanitizeErrorMessage } from './utils/error-sanitizer';
 
 const PORT = env.PORT;
+const corsOrigins = env.CORS_ORIGINS.split(',').map((s) => s.trim());
 
 const app = new Elysia()
   .use(requestLogger)
   .use(
+    cors({
+      origin: corsOrigins,
+      credentials: true,
+    })
+  );
+
+if (env.ENABLE_SWAGGER === 'true') {
+  app.use(
     swagger({
       documentation: {
         info: {
@@ -58,8 +68,10 @@ const app = new Elysia()
         ],
       },
     })
-  )
-  .onError(({ code, error, set, requestId }) => {
+  );
+}
+
+app.onError(({ code, error, set, requestId }) => {
     const errorId = requestId || crypto.randomUUID();
     if (code === 'NOT_FOUND') {
       set.status = 404;
@@ -88,11 +100,18 @@ const app = new Elysia()
         cleanMessage = error.message || 'Validation error';
       }
 
-      return {
+      const resObj: any = {
         success: false,
         error: cleanMessage,
         requestId: errorId,
       };
+
+      if (env.EXPOSE_RAW_ERRORS === 'true') {
+        resObj.details = error;
+        resObj.stack = error instanceof Error ? error.stack : undefined;
+      }
+
+      return resObj;
     }
 
     const msg = error && typeof error === 'object' && 'message' in error ? (error as any).message : String(error);
@@ -104,12 +123,19 @@ const app = new Elysia()
     });
 
     set.status = 500;
-    return {
+    const resObj: any = {
       success: false,
       error: 'INTERNAL_SERVER_ERROR',
       message: sanitizeErrorMessage(msg, 'An unexpected internal server error occurred. Please try again later.'),
       requestId: errorId,
     };
+
+    if (env.EXPOSE_RAW_ERRORS === 'true') {
+      resObj.details = msg;
+      resObj.stack = error instanceof Error ? error.stack : undefined;
+    }
+
+    return resObj;
   })
   .get('/', () => {
     return {
