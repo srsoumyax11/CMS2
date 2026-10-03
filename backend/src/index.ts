@@ -15,8 +15,9 @@ import { sharedRoutes } from './routes/shared';
 import { disconnectPrisma, prisma } from './config/prisma';
 import { requestLogger } from './middleware/request-logger';
 import { logger } from './config/logger';
+import { env } from './config/env';
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = env.PORT;
 
 const app = new Elysia()
   .use(requestLogger)

@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia';
+import { env } from '../config/env';
 
 interface RateLimitStore {
   count: number;
@@ -15,8 +16,11 @@ const store = new Map<string, RateLimitStore>();
 export function createRateLimiter(windowMs: number, maxRequests: number, prefix = 'rl') {
   return new Elysia({ name: `rateLimiter_${prefix}` })
     .onBeforeHandle({ as: 'global' }, ({ request }) => {
+      const skipLimit = process.env.SKIP_RATE_LIMIT === 'true' || env.SKIP_RATE_LIMIT === 'true';
+      const enableTestLimit = process.env.ENABLE_TEST_RATE_LIMIT === 'true' || env.ENABLE_TEST_RATE_LIMIT === 'true';
+
       // In test mode, skip routine rate limiting unless specifically testing rate limits
-      if (process.env.SKIP_RATE_LIMIT === 'true' || (process.env.NODE_ENV === 'test' && process.env.ENABLE_TEST_RATE_LIMIT !== 'true')) {
+      if (skipLimit || (env.NODE_ENV === 'test' && !enableTestLimit)) {
         return;
       }
 

@@ -1,0 +1,37 @@
+# Root GitIgnore for Campus Management System
+
+# Environment & Secret files
+.env
+.env.*
+!.env.example
+
+# Dependencies & Lockfiles
+node_modules/
+bun.lockb
+
+# Build & Dist Outputs
+dist/
+out/
+build/
+.next/
+
+# Logs & Debugging
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS & IDE generated files
+.DS_Store
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Antigravity temporary artifacts
+.gemini/
+.system_generated/

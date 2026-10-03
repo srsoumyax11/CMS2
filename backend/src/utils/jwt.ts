@@ -1,8 +1,5 @@
 import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'cms2_production_secret_key_change_me_2026';
-const ACCESS_TOKEN_EXPIRATION = '15m';
-const REFRESH_TOKEN_EXPIRATION = '7d';
+import { env } from '../config/env';
 
 export interface TokenPayload {
   sub: string;
@@ -17,8 +14,8 @@ export interface TokenPayload {
 export const signAccessToken = (payload: Omit<TokenPayload, 'type'>): string => {
   return jwt.sign(
     { ...payload, type: 'access' },
-    JWT_SECRET,
-    { expiresIn: ACCESS_TOKEN_EXPIRATION }
+    env.JWT_SECRET,
+    { expiresIn: env.JWT_EXPIRES_IN as any }
   );
 };
 
@@ -28,8 +25,8 @@ export const signAccessToken = (payload: Omit<TokenPayload, 'type'>): string => 
 export const signRefreshToken = (payload: Omit<TokenPayload, 'type'>): string => {
   return jwt.sign(
     { ...payload, type: 'refresh' },
-    JWT_SECRET,
-    { expiresIn: REFRESH_TOKEN_EXPIRATION }
+    env.JWT_REFRESH_SECRET,
+    { expiresIn: env.REFRESH_TOKEN_EXPIRES_IN as any }
   );
 };
 
@@ -38,9 +35,14 @@ export const signRefreshToken = (payload: Omit<TokenPayload, 'type'>): string =>
  */
 export const verifyToken = (token: string): TokenPayload | null => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const decoded = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
     return decoded;
   } catch (error) {
-    return null;
+    try {
+      const decoded = jwt.verify(token, env.JWT_REFRESH_SECRET) as TokenPayload;
+      return decoded;
+    } catch {
+      return null;
+    }
   }
 };

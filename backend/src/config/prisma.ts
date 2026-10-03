@@ -1,9 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { logger } from './logger';
+import { env } from './env';
 
 // Single source of truth for Prisma Client connection with pool configuration & query metrics
 export const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  log: env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
 });
 
 export async function disconnectPrisma(): Promise<void> {
