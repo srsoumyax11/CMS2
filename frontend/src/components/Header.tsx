@@ -18,7 +18,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  title = 'CAMPUS7 PLATFORM',
+  title = 'Campus7 Platform',
   currentRole = 'Student Persona',
   unreadNotificationsCount = 3,
 }) => {
@@ -29,37 +29,37 @@ export const Header: React.FC<HeaderProps> = ({
   const [roleModalVisible, setRoleModalVisible] = useState(false);
   const [activeRole, setActiveRole] = useState(currentRole);
 
-  const bg = isDark ? Tokens.colors.surfaceDark : Tokens.colors.canvas;
-  const border = isDark ? Tokens.colors.borderDark : Tokens.colors.hairline;
-  const textPrimary = isDark ? Tokens.colors.textLight : Tokens.colors.ink;
+  const bg = isDark ? Tokens.colors.surfaceDark : Tokens.colors.surface;
+  const border = isDark ? Tokens.colors.borderDark : Tokens.colors.border;
+  const textPrimary = isDark ? Tokens.colors.textLight : Tokens.colors.textPrimary;
 
   return (
     <>
       <View style={[styles.headerContainer, { backgroundColor: bg, borderBottomColor: border }]}>
-        {/* Brand & Role Pill */}
+        {/* Brand & Role Switcher */}
         <View style={styles.leftSection}>
           <TouchableOpacity style={styles.brandContainer} onPress={() => router.push('/' as any)} activeOpacity={0.8}>
-            <View style={styles.logoIcon}>
-              <Text style={styles.logoText}>C7</Text>
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoBadgeText}>C7</Text>
             </View>
-            <Text style={[styles.brandTitle, { color: textPrimary }]}>{title.toUpperCase()}</Text>
+            <Text style={[styles.brandTitle, { color: textPrimary }]}>{title}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.rolePill}
+            style={styles.roleButton}
             onPress={() => setRoleModalVisible(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name="person-circle-outline" size={14} color={Tokens.colors.canvas} />
-            <Text style={styles.rolePillText}>{activeRole.toUpperCase()}</Text>
-            <Ionicons name="chevron-down" size={12} color={Tokens.colors.canvas} />
+            <Ionicons name="person-circle-outline" size={14} color="#FFFFFF" />
+            <Text style={styles.roleButtonText}>{activeRole}</Text>
+            <Ionicons name="chevron-down" size={12} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
-        {/* Action Buttons: Notifications & Profile */}
+        {/* Notification Icon Button */}
         <View style={styles.rightSection}>
           <TouchableOpacity
-            style={styles.iconBtnCircular}
+            style={[styles.iconButton, { borderColor: border }]}
             onPress={() => router.push('/notifications' as any)}
             activeOpacity={0.8}
           >
@@ -85,43 +85,42 @@ export const Header: React.FC<HeaderProps> = ({
 
 const styles = StyleSheet.create({
   headerContainer: {
-    height: 60,
+    height: 56, // Genesis spec: 56px height nav bar
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Tokens.spacing.lg,
+    paddingHorizontal: Tokens.spacing.md,
     borderBottomWidth: Tokens.borderWidths.thin,
   },
-  leftSection: { flexDirection: 'row', alignItems: 'center', gap: Tokens.spacing.md },
+  leftSection: { flexDirection: 'row', alignItems: 'center', gap: Tokens.spacing.sm },
   brandContainer: { flexDirection: 'row', alignItems: 'center', gap: Tokens.spacing.xs },
-  logoIcon: {
-    width: 30,
-    height: 30,
-    backgroundColor: Tokens.colors.ink,
-    borderRadius: Tokens.radii.none, // sharp 0px per design.md
+  logoBadge: {
+    width: 28,
+    height: 28,
+    backgroundColor: Tokens.colors.primary, // #6366F1 Indigo
+    borderRadius: Tokens.radii.md, // 6px radius per Genesis
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoText: { color: Tokens.colors.canvas, fontWeight: '900', fontSize: 13, letterSpacing: -0.5 },
-  brandTitle: { fontSize: 15, fontWeight: '900', letterSpacing: 0 },
-  rolePill: {
+  logoBadgeText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
+  brandTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.02 },
+  roleButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: Tokens.colors.ink,
-    paddingHorizontal: Tokens.spacing.md,
+    gap: 6,
+    backgroundColor: Tokens.colors.primary, // #6366F1 Indigo Primary Button
+    paddingHorizontal: Tokens.spacing.sm,
     paddingVertical: 6,
-    borderRadius: Tokens.radii.pill, // 30px pill radius per design.md
+    borderRadius: Tokens.radii.md, // 6px radius per Genesis buttons
   },
-  rolePillText: { color: Tokens.colors.canvas, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  roleButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
   rightSection: { flexDirection: 'row', alignItems: 'center', gap: Tokens.spacing.xs },
-  iconBtnCircular: {
-    width: 38,
-    height: 38,
-    borderRadius: Tokens.radii.full, // 9999px circular icon button
-    backgroundColor: Tokens.colors.softCloud,
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: Tokens.radii.full, // Avatars & status circular elements
+    backgroundColor: Tokens.colors.surfaceSoftLight,
     borderWidth: Tokens.borderWidths.thin,
-    borderColor: Tokens.colors.hairline,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -133,13 +132,12 @@ const styles = StyleSheet.create({
     minWidth: 16,
     height: 16,
     borderRadius: Tokens.radii.full,
-    backgroundColor: Tokens.colors.sale,
+    backgroundColor: Tokens.colors.error, // Semantic error red
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  badgeText: { color: Tokens.colors.canvas, fontSize: 9, fontWeight: '900' },
+  badgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
 });
 
 export default Header;
-

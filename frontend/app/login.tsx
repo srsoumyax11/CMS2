@@ -23,10 +23,10 @@ export default function LoginScreen() {
   const [passwordOrOtp, setPasswordOrOtp] = useState('');
 
   const bg = isDark ? Tokens.colors.bgDark : Tokens.colors.bgLight;
-  const surface = isDark ? Tokens.colors.surfaceDark : Tokens.colors.canvas;
-  const stageBg = isDark ? Tokens.colors.surfaceSoftDark : Tokens.colors.softCloud;
-  const border = isDark ? Tokens.colors.borderDark : Tokens.colors.hairline;
-  const textPrimary = isDark ? Tokens.colors.textLight : Tokens.colors.ink;
+  const surface = isDark ? Tokens.colors.surfaceDark : Tokens.colors.surface;
+  const border = isDark ? Tokens.colors.borderDark : Tokens.colors.border;
+  const textPrimary = isDark ? Tokens.colors.textLight : Tokens.colors.textPrimary;
+  const textSecondary = isDark ? Tokens.colors.textMuted : Tokens.colors.textSecondary;
 
   const handleLogin = () => {
     router.replace('/' as any);
@@ -40,21 +40,21 @@ export default function LoginScreen() {
       <View style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={16} color={textPrimary} />
-          <Text style={[styles.backBtnText, { color: textPrimary }]}>BACK TO PORTAL</Text>
+          <Text style={[styles.backBtnText, { color: textPrimary }]}>Back to Portal</Text>
         </TouchableOpacity>
 
         <View style={styles.header}>
           <View style={styles.iconBox}>
-            <Ionicons name="lock-closed" size={20} color={Tokens.colors.canvas} />
+            <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
           </View>
-          <Text style={[styles.title, { color: textPrimary }]}>SIGN IN TO CAMPUS7</Text>
-          <Text style={styles.subtitle}>
-            UNIFIED ACADEMIC & HOSTEL GOVERNANCE ENGINE
+          <Text style={[styles.title, { color: textPrimary }]}>Sign in to Campus7</Text>
+          <Text style={[styles.subtitle, { color: textSecondary }]}>
+            Unified Academic & Hostel Governance Engine
           </Text>
         </View>
 
-        {/* Tab Switcher Pill Bar */}
-        <View style={[styles.tabBar, { backgroundColor: stageBg }]}>
+        {/* Tab Switcher */}
+        <View style={[styles.tabBar, { backgroundColor: Tokens.colors.surfaceSoftLight }]}>
           <TouchableOpacity
             style={[styles.tab, loginMethod === 'IDENTITY' && styles.tabActive]}
             onPress={() => setLoginMethod('IDENTITY')}
@@ -63,10 +63,10 @@ export default function LoginScreen() {
             <Text
               style={[
                 styles.tabText,
-                { color: loginMethod === 'IDENTITY' ? Tokens.colors.canvas : Tokens.colors.mute },
+                { color: loginMethod === 'IDENTITY' ? '#FFFFFF' : textSecondary },
               ]}
             >
-              ROLL / EMPLOYEE CODE
+              Roll / Employee Code
             </Text>
           </TouchableOpacity>
 
@@ -78,50 +78,50 @@ export default function LoginScreen() {
             <Text
               style={[
                 styles.tabText,
-                { color: loginMethod === 'PHONE' ? Tokens.colors.canvas : Tokens.colors.mute },
+                { color: loginMethod === 'PHONE' ? '#FFFFFF' : textSecondary },
               ]}
             >
-              PHONE OTP
+              Phone OTP
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Form Inputs */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>
-            {loginMethod === 'IDENTITY' ? 'ROLL NO / EMPLOYEE CODE' : 'PHONE NUMBER (+91)'}
+          <Text style={[styles.label, { color: textSecondary }]}>
+            {loginMethod === 'IDENTITY' ? 'Roll No / Employee Code' : 'Phone Number (+91)'}
           </Text>
           <TextInput
             style={[
               styles.input,
               {
-                backgroundColor: stageBg,
+                backgroundColor: surface,
                 borderColor: border,
                 color: textPrimary,
               },
             ]}
             placeholder={loginMethod === 'IDENTITY' ? 'e.g. 2026-CS-004' : '9876543210'}
-            placeholderTextColor={Tokens.colors.mute}
+            placeholderTextColor={Tokens.colors.neutral}
             value={identifier}
             onChangeText={setIdentifier}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>
-            {loginMethod === 'IDENTITY' ? 'ACCOUNT PASSWORD' : '6-DIGIT OTP CODE'}
+          <Text style={[styles.label, { color: textSecondary }]}>
+            {loginMethod === 'IDENTITY' ? 'Account Password' : '6-Digit OTP Code'}
           </Text>
           <TextInput
             style={[
               styles.input,
               {
-                backgroundColor: stageBg,
+                backgroundColor: surface,
                 borderColor: border,
                 color: textPrimary,
               },
             ]}
             placeholder={loginMethod === 'IDENTITY' ? '••••••••' : '123456'}
-            placeholderTextColor={Tokens.colors.mute}
+            placeholderTextColor={Tokens.colors.neutral}
             secureTextEntry={loginMethod === 'IDENTITY'}
             value={passwordOrOtp}
             onChangeText={setPasswordOrOtp}
@@ -133,8 +133,8 @@ export default function LoginScreen() {
           onPress={handleLogin}
           activeOpacity={0.8}
         >
-          <Text style={styles.submitBtnText}>AUTHENTICATE & SIGN IN</Text>
-          <Ionicons name="arrow-forward" size={16} color={Tokens.colors.canvas} />
+          <Text style={styles.submitBtnText}>Authenticate & Sign In</Text>
+          <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -150,11 +150,11 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 440,
-    borderRadius: Tokens.radii.none, // Flat 0px per design.md
+    maxWidth: 420,
+    borderRadius: Tokens.radii.xl, // 12px card radius per Genesis
     padding: Tokens.spacing.lg,
     borderWidth: Tokens.borderWidths.thin,
-    borderColor: Tokens.colors.hairline,
+    borderColor: Tokens.colors.border,
   },
   backBtn: {
     flexDirection: 'row',
@@ -163,9 +163,8 @@ const styles = StyleSheet.create({
     marginBottom: Tokens.spacing.md,
   },
   backBtnText: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontSize: 13,
+    fontWeight: '600',
   },
   header: {
     alignItems: 'center',
@@ -174,78 +173,69 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 44,
     height: 44,
-    backgroundColor: Tokens.colors.ink,
-    borderRadius: Tokens.radii.none, // Sharp 0px box
+    backgroundColor: Tokens.colors.primary, // Indigo #6366F1
+    borderRadius: Tokens.radii.md, // 6px icon box radius
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Tokens.spacing.sm,
   },
   title: {
     fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 0,
+    fontWeight: '700',
+    letterSpacing: -0.01,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Tokens.colors.mute,
+    fontSize: 13,
     textAlign: 'center',
-    letterSpacing: 0.5,
   },
   tabBar: {
     flexDirection: 'row',
-    borderRadius: Tokens.radii.pill, // 30px pill container
+    borderRadius: Tokens.radii.md, // 6px container radius
     padding: 3,
     marginBottom: Tokens.spacing.md,
   },
   tab: {
     flex: 1,
-    paddingVertical: Tokens.spacing.sm,
+    paddingVertical: 8,
     alignItems: 'center',
-    borderRadius: Tokens.radii.pill,
+    borderRadius: Tokens.radii.md,
   },
   tabActive: {
-    backgroundColor: Tokens.colors.ink,
+    backgroundColor: Tokens.colors.primary, // Indigo active tab
   },
   tabText: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontSize: 13,
+    fontWeight: '600',
   },
   inputGroup: {
     marginBottom: Tokens.spacing.md,
   },
   label: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: Tokens.colors.mute,
+    fontSize: 13,
+    fontWeight: '600',
     marginBottom: 6,
-    letterSpacing: 0.5,
   },
   input: {
-    height: 44,
+    height: 40,
     paddingHorizontal: Tokens.spacing.md,
-    borderRadius: Tokens.radii.md, // 24px input search pill shape per design.md
+    borderRadius: Tokens.radii.md, // 6px input radius per Genesis
     borderWidth: Tokens.borderWidths.thin,
     fontSize: 14,
-    fontWeight: '500',
   },
   submitBtn: {
-    backgroundColor: Tokens.colors.ink,
+    backgroundColor: Tokens.colors.primary, // Indigo Primary CTA button
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
-    borderRadius: Tokens.radii.pill, // 30px pill radius per design.md
-    gap: Tokens.spacing.sm,
-    marginTop: Tokens.spacing.sm,
+    height: 42,
+    borderRadius: Tokens.radii.md, // 6px button radius per Genesis
+    gap: Tokens.spacing.xs,
+    marginTop: Tokens.spacing.xs,
   },
   submitBtnText: {
-    color: Tokens.colors.canvas,
-    fontWeight: '900',
-    fontSize: 13,
-    letterSpacing: 0.5,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
-
