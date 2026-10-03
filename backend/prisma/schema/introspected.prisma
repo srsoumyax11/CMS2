@@ -398,16 +398,17 @@ model batch_terms {
 }
 
 model batches {
-  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  course_id             String                  @db.Uuid
-  admission_year_id     String                  @db.Uuid
-  name                  String
-  batch_terms           batch_terms[]
-  academic_years        academic_years          @relation(fields: [admission_year_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  courses               courses                 @relation(fields: [course_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  sections              sections[]
-  student_batch_history student_batch_history[]
-  students              students[]
+  id                        String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  course_id                 String                      @db.Uuid
+  admission_year_id         String                      @db.Uuid
+  name                      String
+  batch_terms               batch_terms[]
+  academic_years            academic_years              @relation(fields: [admission_year_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  courses                   courses                     @relation(fields: [course_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pre_registered_identities pre_registered_identities[]
+  sections                  sections[]
+  student_batch_history     student_batch_history[]
+  students                  students[]
 
   @@unique([course_id, admission_year_id, name])
   @@index([admission_year_id])
@@ -714,18 +715,19 @@ model data_access_logs {
 }
 
 model departments {
-  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code               String               @unique
-  name               String
-  head_user_id       String?              @db.Uuid
-  created_at         DateTime             @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
-  deleted_at         DateTime?            @db.Timestamptz(6)
-  courses            courses[]
-  users              users?               @relation(fields: [head_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  no_dues_clearances no_dues_clearances[]
-  role_requests      role_requests[]
-  staff              staff[]
+  id                        String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                      String                      @unique
+  name                      String
+  head_user_id              String?                     @db.Uuid
+  created_at                DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime                    @default(now()) @db.Timestamptz(6)
+  deleted_at                DateTime?                   @db.Timestamptz(6)
+  courses                   courses[]
+  users                     users?                      @relation(fields: [head_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  no_dues_clearances        no_dues_clearances[]
+  pre_registered_identities pre_registered_identities[]
+  role_requests             role_requests[]
+  staff                     staff[]
 
   @@index([head_user_id])
   @@schema("campus")
@@ -815,6 +817,20 @@ model drive_eligible_courses {
 
   @@id([drive_id, course_id])
   @@index([course_id])
+  @@schema("campus")
+}
+
+model emergency_contacts {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String   @db.Uuid
+  name            String
+  relation        String
+  phone           String
+  alternate_phone String?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  users           users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
   @@schema("campus")
 }
 
@@ -1923,6 +1939,26 @@ model placement_drives {
   @@schema("campus")
 }
 
+model pre_registered_identities {
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_code          String       @unique
+  expected_role_code String
+  full_name          String
+  email              String?
+  phone              String?
+  department_id      String?      @db.Uuid
+  batch_id           String?      @db.Uuid
+  is_claimed         Boolean      @default(false)
+  claimed_by_user_id String?      @db.Uuid
+  created_at         DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime     @default(now()) @db.Timestamptz(6)
+  batches            batches?     @relation(fields: [batch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users              users?       @relation(fields: [claimed_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  departments        departments? @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("campus")
+}
+
 model push_tokens {
   id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   device_id    String       @db.Uuid
@@ -2724,31 +2760,31 @@ model user_roles {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model users {
-  id                                                                     String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_code                                                              String?                    @unique
+  id                                                                     String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_code                                                              String?                     @unique
   full_name                                                              String
   email                                                                  String?
   phone                                                                  String?
   password_hash                                                          String?
-  status                                                                 String                     @default("registered")
-  preferred_language                                                     String                     @default("en")
-  email_verified_at                                                      DateTime?                  @db.Timestamptz(6)
-  phone_verified_at                                                      DateTime?                  @db.Timestamptz(6)
-  mfa_enabled                                                            Boolean                    @default(false)
-  last_login_at                                                          DateTime?                  @db.Timestamptz(6)
-  created_at                                                             DateTime                   @default(now()) @db.Timestamptz(6)
-  updated_at                                                             DateTime                   @default(now()) @db.Timestamptz(6)
-  deleted_at                                                             DateTime?                  @db.Timestamptz(6)
+  status                                                                 String                      @default("registered")
+  preferred_language                                                     String                      @default("en")
+  email_verified_at                                                      DateTime?                   @db.Timestamptz(6)
+  phone_verified_at                                                      DateTime?                   @db.Timestamptz(6)
+  mfa_enabled                                                            Boolean                     @default(false)
+  last_login_at                                                          DateTime?                   @db.Timestamptz(6)
+  created_at                                                             DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at                                                             DateTime                    @default(now()) @db.Timestamptz(6)
+  deleted_at                                                             DateTime?                   @db.Timestamptz(6)
   addresses                                                              addresses[]
-  admission_applications_admission_applications_applicant_user_idTousers admission_applications[]   @relation("admission_applications_applicant_user_idTousers")
-  admission_applications_admission_applications_decided_byTousers        admission_applications[]   @relation("admission_applications_decided_byTousers")
+  admission_applications_admission_applications_applicant_user_idTousers admission_applications[]    @relation("admission_applications_applicant_user_idTousers")
+  admission_applications_admission_applications_decided_byTousers        admission_applications[]    @relation("admission_applications_decided_byTousers")
   alumni_profiles                                                        alumni_profiles?
   anonymous_reports                                                      anonymous_reports[]
   application_documents                                                  application_documents[]
-  asset_assignments_asset_assignments_issued_byTousers                   asset_assignments[]        @relation("asset_assignments_issued_byTousers")
-  asset_assignments_asset_assignments_user_idTousers                     asset_assignments[]        @relation("asset_assignments_user_idTousers")
-  asset_damage_reports_asset_damage_reports_charged_user_idTousers       asset_damage_reports[]     @relation("asset_damage_reports_charged_user_idTousers")
-  asset_damage_reports_asset_damage_reports_reported_byTousers           asset_damage_reports[]     @relation("asset_damage_reports_reported_byTousers")
+  asset_assignments_asset_assignments_issued_byTousers                   asset_assignments[]         @relation("asset_assignments_issued_byTousers")
+  asset_assignments_asset_assignments_user_idTousers                     asset_assignments[]         @relation("asset_assignments_user_idTousers")
+  asset_damage_reports_asset_damage_reports_charged_user_idTousers       asset_damage_reports[]      @relation("asset_damage_reports_charged_user_idTousers")
+  asset_damage_reports_asset_damage_reports_reported_byTousers           asset_damage_reports[]      @relation("asset_damage_reports_reported_byTousers")
   attendance_records                                                     attendance_records[]
   auth_sessions                                                          auth_sessions[]
   backup_codes                                                           backup_codes[]
@@ -2759,57 +2795,59 @@ model users {
   case_responses                                                         case_responses[]
   club_members                                                           club_members[]
   counselling_bookings                                                   counselling_bookings[]
-  data_access_logs_data_access_logs_subject_user_idTousers               data_access_logs[]         @relation("data_access_logs_subject_user_idTousers")
-  data_access_logs_data_access_logs_viewer_idTousers                     data_access_logs[]         @relation("data_access_logs_viewer_idTousers")
+  data_access_logs_data_access_logs_subject_user_idTousers               data_access_logs[]          @relation("data_access_logs_subject_user_idTousers")
+  data_access_logs_data_access_logs_viewer_idTousers                     data_access_logs[]          @relation("data_access_logs_viewer_idTousers")
   departments                                                            departments[]
-  document_requests_document_requests_decided_byTousers                  document_requests[]        @relation("document_requests_decided_byTousers")
-  document_requests_document_requests_requester_idTousers                document_requests[]        @relation("document_requests_requester_idTousers")
-  document_requests_document_requests_subject_user_idTousers             document_requests[]        @relation("document_requests_subject_user_idTousers")
+  document_requests_document_requests_decided_byTousers                  document_requests[]         @relation("document_requests_decided_byTousers")
+  document_requests_document_requests_requester_idTousers                document_requests[]         @relation("document_requests_requester_idTousers")
+  document_requests_document_requests_subject_user_idTousers             document_requests[]         @relation("document_requests_subject_user_idTousers")
+  emergency_contacts                                                     emergency_contacts[]
   event_awards                                                           event_awards[]
   event_registrations                                                    event_registrations[]
   events                                                                 events[]
   files                                                                  files[]
-  guardian_link_requests_guardian_link_requests_decided_byTousers        guardian_link_requests[]   @relation("guardian_link_requests_decided_byTousers")
-  guardian_link_requests_guardian_link_requests_guardian_user_idTousers  guardian_link_requests[]   @relation("guardian_link_requests_guardian_user_idTousers")
+  guardian_link_requests_guardian_link_requests_decided_byTousers        guardian_link_requests[]    @relation("guardian_link_requests_decided_byTousers")
+  guardian_link_requests_guardian_link_requests_guardian_user_idTousers  guardian_link_requests[]    @relation("guardian_link_requests_guardian_user_idTousers")
   guardians                                                              guardians?
   gym_bookings                                                           gym_bookings[]
-  issued_documents_issued_documents_issued_byTousers                     issued_documents[]         @relation("issued_documents_issued_byTousers")
-  issued_documents_issued_documents_subject_user_idTousers               issued_documents[]         @relation("issued_documents_subject_user_idTousers")
-  leave_requests_leave_requests_decided_byTousers                        leave_requests[]           @relation("leave_requests_decided_byTousers")
-  leave_requests_leave_requests_requester_idTousers                      leave_requests[]           @relation("leave_requests_requester_idTousers")
-  leave_requests_leave_requests_substitute_user_idTousers                leave_requests[]           @relation("leave_requests_substitute_user_idTousers")
+  issued_documents_issued_documents_issued_byTousers                     issued_documents[]          @relation("issued_documents_issued_byTousers")
+  issued_documents_issued_documents_subject_user_idTousers               issued_documents[]          @relation("issued_documents_subject_user_idTousers")
+  leave_requests_leave_requests_decided_byTousers                        leave_requests[]            @relation("leave_requests_decided_byTousers")
+  leave_requests_leave_requests_requester_idTousers                      leave_requests[]            @relation("leave_requests_requester_idTousers")
+  leave_requests_leave_requests_substitute_user_idTousers                leave_requests[]            @relation("leave_requests_substitute_user_idTousers")
   login_events                                                           login_events[]
-  lost_found_claims_lost_found_claims_claimant_idTousers                 lost_found_claims[]        @relation("lost_found_claims_claimant_idTousers")
-  lost_found_claims_lost_found_claims_verified_byTousers                 lost_found_claims[]        @relation("lost_found_claims_verified_byTousers")
+  lost_found_claims_lost_found_claims_claimant_idTousers                 lost_found_claims[]         @relation("lost_found_claims_claimant_idTousers")
+  lost_found_claims_lost_found_claims_verified_byTousers                 lost_found_claims[]         @relation("lost_found_claims_verified_byTousers")
   lost_found_items                                                       lost_found_items[]
   mark_change_requests                                                   mark_change_requests[]
   medical_visits                                                         medical_visits[]
   mess_hygiene_checks                                                    mess_hygiene_checks[]
-  messages_messages_recipient_idTousers                                  messages[]                 @relation("messages_recipient_idTousers")
-  messages_messages_sender_idTousers                                     messages[]                 @relation("messages_sender_idTousers")
+  messages_messages_recipient_idTousers                                  messages[]                  @relation("messages_recipient_idTousers")
+  messages_messages_sender_idTousers                                     messages[]                  @relation("messages_sender_idTousers")
   name_correction_requests                                               name_correction_requests[]
   no_dues_clearances                                                     no_dues_clearances[]
   notice_reads                                                           notice_reads[]
-  notices_notices_approved_byTousers                                     notices[]                  @relation("notices_approved_byTousers")
-  notices_notices_created_byTousers                                      notices[]                  @relation("notices_created_byTousers")
+  notices_notices_approved_byTousers                                     notices[]                   @relation("notices_approved_byTousers")
+  notices_notices_created_byTousers                                      notices[]                   @relation("notices_created_byTousers")
   notification_preferences                                               notification_preferences[]
   notifications                                                          notifications[]
   otp_requests                                                           otp_requests[]
   outpass_events                                                         outpass_events[]
   outpass_requests                                                       outpass_requests[]
-  payments_payments_entered_byTousers                                    payments[]                 @relation("payments_entered_byTousers")
-  payments_payments_payer_user_idTousers                                 payments[]                 @relation("payments_payer_user_idTousers")
+  payments_payments_entered_byTousers                                    payments[]                  @relation("payments_entered_byTousers")
+  payments_payments_payer_user_idTousers                                 payments[]                  @relation("payments_payer_user_idTousers")
+  pre_registered_identities                                              pre_registered_identities[]
   recheck_requests                                                       recheck_requests[]
-  refunds_refunds_approved_byTousers                                     refunds[]                  @relation("refunds_approved_byTousers")
-  refunds_refunds_requested_byTousers                                    refunds[]                  @relation("refunds_requested_byTousers")
-  role_requests_role_requests_reviewer_idTousers                         role_requests[]            @relation("role_requests_reviewer_idTousers")
-  role_requests_role_requests_user_idTousers                             role_requests[]            @relation("role_requests_user_idTousers")
+  refunds_refunds_approved_byTousers                                     refunds[]                   @relation("refunds_approved_byTousers")
+  refunds_refunds_requested_byTousers                                    refunds[]                   @relation("refunds_requested_byTousers")
+  role_requests_role_requests_reviewer_idTousers                         role_requests[]             @relation("role_requests_reviewer_idTousers")
+  role_requests_role_requests_user_idTousers                             role_requests[]             @relation("role_requests_user_idTousers")
   room_change_requests                                                   room_change_requests[]
-  safety_cases_safety_cases_complainant_idTousers                        safety_cases[]             @relation("safety_cases_complainant_idTousers")
-  safety_cases_safety_cases_respondent_idTousers                         safety_cases[]             @relation("safety_cases_respondent_idTousers")
+  safety_cases_safety_cases_complainant_idTousers                        safety_cases[]              @relation("safety_cases_complainant_idTousers")
+  safety_cases_safety_cases_respondent_idTousers                         safety_cases[]              @relation("safety_cases_respondent_idTousers")
   sos_alerts                                                             sos_alerts[]
-  sos_incidents_sos_incidents_closed_byTousers                           sos_incidents[]            @relation("sos_incidents_closed_byTousers")
-  sos_incidents_sos_incidents_triggered_byTousers                        sos_incidents[]            @relation("sos_incidents_triggered_byTousers")
+  sos_incidents_sos_incidents_closed_byTousers                           sos_incidents[]             @relation("sos_incidents_closed_byTousers")
+  sos_incidents_sos_incidents_triggered_byTousers                        sos_incidents[]             @relation("sos_incidents_triggered_byTousers")
   sos_updates                                                            sos_updates[]
   staff                                                                  staff?
   student_status_history                                                 student_status_history[]
@@ -2819,20 +2857,20 @@ model users {
   teams                                                                  teams[]
   ticket_comments                                                        ticket_comments[]
   ticket_status_history                                                  ticket_status_history[]
-  tickets_tickets_assigned_user_idTousers                                tickets[]                  @relation("tickets_assigned_user_idTousers")
-  tickets_tickets_raised_byTousers                                       tickets[]                  @relation("tickets_raised_byTousers")
+  tickets_tickets_assigned_user_idTousers                                tickets[]                   @relation("tickets_assigned_user_idTousers")
+  tickets_tickets_raised_byTousers                                       tickets[]                   @relation("tickets_raised_byTousers")
   timetable_entries                                                      timetable_entries[]
   user_consents                                                          user_consents[]
   user_devices                                                           user_devices[]
   user_emergency_contacts                                                user_emergency_contacts[]
   user_quiet_hours                                                       user_quiet_hours?
-  user_roles_user_roles_granted_byTousers                                user_roles[]               @relation("user_roles_granted_byTousers")
-  user_roles_user_roles_user_idTousers                                   user_roles[]               @relation("user_roles_user_idTousers")
+  user_roles_user_roles_granted_byTousers                                user_roles[]                @relation("user_roles_granted_byTousers")
+  user_roles_user_roles_user_idTousers                                   user_roles[]                @relation("user_roles_user_idTousers")
   vehicles                                                               vehicles[]
-  visitors_visitors_approved_byTousers                                   visitors[]                 @relation("visitors_approved_byTousers")
-  visitors_visitors_host_user_idTousers                                  visitors[]                 @relation("visitors_host_user_idTousers")
-  waiver_requests_waiver_requests_approved_byTousers                     waiver_requests[]          @relation("waiver_requests_approved_byTousers")
-  waiver_requests_waiver_requests_requested_byTousers                    waiver_requests[]          @relation("waiver_requests_requested_byTousers")
+  visitors_visitors_approved_byTousers                                   visitors[]                  @relation("visitors_approved_byTousers")
+  visitors_visitors_host_user_idTousers                                  visitors[]                  @relation("visitors_host_user_idTousers")
+  waiver_requests_waiver_requests_approved_byTousers                     waiver_requests[]           @relation("waiver_requests_approved_byTousers")
+  waiver_requests_waiver_requests_requested_byTousers                    waiver_requests[]           @relation("waiver_requests_requested_byTousers")
   warnings                                                               warnings[]
 
   @@schema("campus")

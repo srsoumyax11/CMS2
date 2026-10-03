@@ -917,3 +917,201 @@ These are used by all 5 roles. Base path: `/api/v1`. Most are internal, so some 
 Next step: the database tables for all 5 roles plus these system parts, or the MVP list of the first 30 endpoints?
 
 
+### New and missing APIs
+
+Base path: `/api/v1`. These add to the earlier lists. Every route is checked against the active permission view, so pending users get nothing except the onboarding routes.
+
+### 1. Signup and onboarding (public and self)
+
+A user with no role gets a limited **onboarding token**. It only works on these routes. After approval, login returns a full token.
+
+| Method | Endpoint | Who | Purpose |
+|---|---|---|---|
+| POST | /auth/register | Public | Sign up with phone or email (rate limited, captcha) |
+| POST | /auth/register/verify-otp | Public | Verify OTP, account becomes `registered` |
+| POST | /auth/register/resend-otp | Public | Resend OTP with cooldown |
+| GET | /me/onboarding | Any user | Next step, open requests, current status |
+| GET | /roles/requestable | Any user | Roles that can be requested, evidence needed, auto or manual |
+| GET | /me/roles | Any user | My active roles |
+| POST | /me/active-role | Any user | Switch role (parent to faculty) |
+| GET | /me/permissions | Any user | What I can do now |
+| POST | /me/contact-change | Active user | Change email or phone, needs OTP on new one |
+| POST | /me/contact-change/verify | Active user | Confirm the change |
+| GET, POST | /me/addresses | Any user | List or add address |
+| PATCH, DELETE | /me/addresses/{id} | Any user | Edit or remove |
+| GET | /lookup/pin-codes/{pin} | Any user | City and state from PIN |
+| GET, POST | /me/emergency-contacts | Any user | Manage emergency contacts |
+| PATCH, DELETE | /me/emergency-contacts/{id} | Any user | Edit or remove |
+
+### 2. Role requests (user side)
+
+| Method | Endpoint | Who | Purpose |
+|---|---|---|---|
+| POST | /role-requests | Registered | Ask for a role with ID code, department or hostel |
+| GET | /role-requests | Owner | My requests |
+| GET | /role-requests/{id} | Owner | Status and reviewer note |
+| PATCH | /role-requests/{id} | Owner | Answer "needs info" or fix the code |
+| POST | /role-requests/{id}/evidence | Owner | Upload ID card or offer letter |
+| POST | /role-requests/{id}/cancel | Owner | Cancel |
+
+### 3. Role approvals (approver side)
+
+| Method | Endpoint | Who | Purpose |
+|---|---|---|---|
+| GET | /approvals/role-requests?status=&role= | Approver | Queue |
+| GET | /approvals/role-requests/{id} | Approver | Details and auto checks (duplicate code, match with records) |
+| POST | /approvals/role-requests/{id}/approve | Approver | Approve. Body has batch, section, department or hostel |
+| POST | /approvals/role-requests/{id}/reject | Approver | Reject with reason |
+| POST | /approvals/role-requests/{id}/request-info | Approver | Ask for more proof |
+| POST | /approvals/role-requests/{id}/reassign | Approver | Send to another approver |
+| POST | /approvals/role-requests/bulk-approve | Admin | Approve many that match the verified list |
+| GET | /approvals/stats | Approver | Pending count and average time |
+| GET, PUT | /admin/role-approval-rules, /{roleId} | Admin | Who can request, auto or manual, who approves |
+| GET, PATCH | /admin/signup-settings | Admin | Open or closed signup, allowed email domains |
+| POST | /admin/identities/import | Admin | Upload known student and employee IDs for auto match |
+| POST | /admin/registrations/purge-stale | Admin | Clean up accounts with no role after N days |
+| POST | /admin/users/{id}/set-code | Admin | Fix a user code (duplicate is blocked) |
+| GET | /admin/users?status=registered,pending_approval,rejected | Admin | Users waiting or rejected |
+
+The identity import needs one small new table (`pre_registered_identities`) that the schema does not have yet. I can add it.
+
+### 4. Parent link flow
+
+| Method | Endpoint | Who | Purpose |
+|---|---|---|---|
+| POST | /guardian-links | Registered | Link to a child with admission no, DOB and relation |
+| GET | /guardian-links | Parent | My link requests and status |
+| POST | /guardian-links/{id}/resend | Parent | Resend the confirmation to the student |
+| DELETE | /guardian-links/{id} | Parent | Cancel |
+| GET | /me/guardian-requests | Student | Parents asking to link |
+| POST | /me/guardian-requests/{id}/confirm | Student | Confirm |
+| POST | /me/guardian-requests/{id}/reject | Student | Reject |
+| GET | /me/guardians | Student | Linked parents |
+| DELETE | /me/guardians/{guardianId} | Student | Unlink |
+| GET, PUT | /me/guardians/{guardianId}/consents | Student | See or change what each parent can see |
+| GET | /admin/guardian-links?status= | Admin | Queue |
+| POST | /admin/guardian-links/{id}/approve, /reject | Admin | Decide when the student cannot |
+| POST, DELETE | /admin/students/{id}/guardians | Admin | Add or remove directly |
+
+### 5. College setup (admin)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET, POST | /admin/academic-years, /terms | Years and terms |
+| PUT | /admin/batches/{id}/terms/{termId} | Semester number of a batch per term |
+| GET, POST | /admin/periods | Class period timings |
+| GET, POST | /admin/buildings | Buildings |
+| GET, POST, PATCH | /admin/locations | Place tree (campus, building, floor, room) |
+| GET, POST | /admin/leave-types | Leave types |
+| PUT | /admin/courses/{id}/subjects | Subjects per course and semester |
+| GET, POST, PATCH | /admin/subject-offerings | Faculty, section and term for a subject |
+| GET | /admin/students/{id}/batch-history | Branch and batch changes |
+| GET | /admin/students/{id}/status-history | Active, suspended, dropped history |
+| GET, POST, DELETE | /admin/role-conflicts | Role pairs that cannot be held together |
+
+### 6. Student side gaps
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | /invoices, /invoices/{id} | Invoices with items, balance and due date |
+| GET | /scholarships, POST /scholarships/{id}/apply | Browse and apply |
+| GET | /me/scholarships | My scholarship status |
+| GET, POST | /messages | Official messages with mentor or warden |
+| GET | /me/mentor | My mentor |
+| GET | /me/warnings | Warnings and fines |
+| GET | /library/reservations | My reservations |
+| DELETE | /library/reservations/{id} | Cancel one |
+| GET | /clubs, POST /clubs/{id}/join | Browse and join clubs |
+| GET | /me/awards | Event awards and certificates |
+| GET | /feedback/pending | Faculty feedback I still owe |
+| GET | /me/batch-history | My batch and branch history |
+
+### 7. Library desk (admin or librarian permission)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET, POST, PATCH | /library/books, /authors | Catalog |
+| POST | /library/books/{id}/copies | Add copies with accession no |
+| POST | /library/loans | Issue a copy |
+| POST | /library/loans/{id}/return | Return |
+| POST | /library/loans/{id}/renew | Renew |
+| GET | /library/overdue | Overdue list |
+| POST | /library/fines/post | Post fines to the student invoice |
+| POST | /library/reservations/{id}/fulfil | Hand over reserved book |
+
+### 8. Finance gaps (admin or accountant)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET, POST | /admin/fee-heads | Fee heads |
+| PUT | /admin/fee-structures/{id}/items | Amount and due date per head |
+| POST | /admin/invoices/generate | Create invoices for a batch |
+| POST | /admin/invoices/{id}/items | Add a charge, fine, waiver or scholarship line |
+| POST | /admin/invoices/{id}/cancel | Cancel an invoice |
+| POST | /admin/fines/run | Apply late fines (also a scheduled job) |
+| GET, POST | /admin/waiver-requests | Waiver requests |
+| GET | /admin/student-scholarships | Scholarship queue |
+| POST | /admin/student-scholarships/{id}/decide | Approve or reject |
+| GET | /admin/payments/gateway-events | Raw gateway events |
+| POST | /admin/payments/gateway-events/{id}/replay | Re-process a failed event |
+
+### 9. Hostel, mess and exams gaps
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET, POST | /admin/dishes | Dish list |
+| PUT | /warden/mess/menu/{date} | Set the menu for a day |
+| POST, PATCH | /admin/hostels/{id}/rooms/{roomId}/beds | Add beds, mark unusable |
+| GET, POST | /admin/exams/{id}/papers | Exam papers and schedule |
+| POST | /admin/exam-duties/{id}/decide | Approve a duty swap |
+| POST | /admin/exams/{id}/seating | Seat plan |
+
+### 10. Safety and health gaps
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET, PUT | /admin/sos/escalation-steps | Order and wait time of who gets alerted |
+| GET, POST, PATCH | /admin/emergency-directory | Ambulance, nurse, security numbers |
+| GET, POST | /safety/cases | Named cases (committee only) |
+| POST | /safety/cases/{id}/responses | Add a response |
+| PATCH | /safety/cases/{id}/status | Move the case forward |
+| GET, POST | /counselling/slots | Counsellor slots |
+| GET, PATCH | /counselling/bookings | Counsellor view of bookings |
+| POST, GET | /medical/visits | Record or view a visit (nurse only, private) |
+| POST | /medical/visits/{id}/link-leave | Link a visit to a medical leave |
+
+### 11. Transport, activities and placements gaps
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET, POST, PATCH | /admin/vehicles | Vehicles and drivers |
+| PUT | /admin/routes/{id}/stops | Stops and times |
+| POST | /driver/trips/start, /stop | Driver starts or ends a trip |
+| POST | /driver/vehicles/{id}/location | Send live location |
+| GET, POST, PATCH | /clubs, /clubs/{id}/members | Club admin |
+| POST | /events/{id}/awards | Give awards and issue certificates |
+| GET, POST | /placements/companies | Company list |
+| PUT | /placements/drives/{id}/eligible-courses | Eligible courses |
+| PATCH | /placements/applications/{driveId}/{studentId} | Shortlist or select |
+| GET, PATCH | /alumni/profile | Alumni profile |
+
+### 12. System and privacy gaps
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| PATCH | /notifications/quiet-hours | Quiet hours per user |
+| GET | /admin/access-logs?subjectId= | Who viewed whose data |
+| GET | /admin/consents?userId= | Consent records |
+| GET, PUT | /admin/app-config | Min app version, maintenance notice |
+| GET, PUT | /admin/retention | Retention per data type |
+| GET | /admin/login-events?risk= | Odd logins across users |
+
+### Rules for the new APIs
+
+- **Rate limits:** Signup and OTP routes have limits and captcha. One phone or email per account.
+- **Four eyes:** Nobody approves their own request. The approver must hold the role named in the rule table.
+- **One transaction:** Approval grants the role, sets the ID code, activates the account and creates the profile row together.
+- **Notify and log:** Every request and decision sends a notification and writes an audit log.
+- **Expiry:** Parent link requests expire after 7 days, with a scheduled job.
+
+Next step: add `pre_registered_identities` to the schema, or write request and response samples for the signup and approval flow?

@@ -108,3 +108,18 @@ bun test tests/admin.test.ts
 cd backend
 bunx tsc --noEmit
 ```
+
+1. 🌐 View the Frontend Web App
+The Expo React Native Web server is currently running in your background terminal.
+
+Open your browser and navigate to: http://localhost:8081
+2. ⚡ View the Backend & Interactive Swagger API Docs
+The ElysiaJS + Bun API server is running locally:
+
+Open your browser and navigate to: http://localhost:3000/swagger
+3. 📱 Mobile & Dev Server Commands (common_cmd.md)
+Web App: cd frontend && bun run web (Opens at http://localhost:8081)
+Android: cd frontend && bun run android
+iOS: cd frontend && bun run ios
+Backend Server: cd backend && bun run --watch src/index.ts (Runs at http://localhost:3000)
+Backend Test Suite: cd backend && bun test

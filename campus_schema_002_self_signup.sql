@@ -50,9 +50,37 @@ CREATE TABLE role_requests (
   updated_at timestamptz NOT NULL DEFAULT now(),
   CHECK (reviewer_id IS DISTINCT FROM user_id)     -- nobody approves own request
 );
-CREATE UNIQUE INDEX uq_one_open_role_request ON role_requests (user_id, role_id)
+CREATE UNIQUE INDEX uq_one_one_open_role_request ON role_requests (user_id, role_id)
   WHERE status IN ('pending','needs_info');
 CREATE INDEX idx_role_requests_queue ON role_requests (role_id, created_at) WHERE status = 'pending';
+
+-- 3b. Known student and employee IDs for auto match / identity import
+CREATE TABLE pre_registered_identities (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_code text NOT NULL UNIQUE,
+  expected_role_code text NOT NULL,
+  full_name text NOT NULL,
+  email text,
+  phone text,
+  department_id uuid REFERENCES departments(id),
+  batch_id uuid REFERENCES batches(id),
+  is_claimed boolean NOT NULL DEFAULT false,
+  claimed_by_user_id uuid REFERENCES users(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+-- 3c. User emergency contacts
+CREATE TABLE emergency_contacts (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  relation text NOT NULL,
+  phone text NOT NULL,
+  alternate_phone text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_emergency_contacts_user ON emergency_contacts(user_id);
 
 -- 4. Parent flow: link to a child. Child confirms, or an admin approves.
 CREATE TABLE guardian_link_requests (

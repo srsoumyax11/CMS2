@@ -1,6 +1,11 @@
 import { Elysia } from 'elysia';
 import { swagger } from '@elysiajs/swagger';
 import { authRoutes } from './routes/auth';
+import { onboardingRoutes } from './routes/onboarding';
+import { approvalsRoutes, adminGovernanceRoutes } from './routes/approvals';
+import { campusOpsRoutes } from './routes/campus_ops';
+import { financeHealthRoutes } from './routes/finance_health';
+import { transportPlacementsRoutes } from './routes/transport_placements';
 import { studentRoutes } from './routes/student';
 import { wardenRoutes } from './routes/warden';
 import { facultyRoutes } from './routes/faculty';
@@ -20,6 +25,23 @@ const app = new Elysia()
         },
         tags: [
           { name: 'Authentication', description: 'Login, OTP, Self Signup & Role Requests' },
+          { name: 'Signup & Onboarding', description: 'Self-signup, contact updates, emergency contacts & onboarding' },
+          { name: 'Role Requests', description: 'User-side role application workflow' },
+          { name: 'Role Approvals', description: 'Approver queue, decisions & auto-checks' },
+          { name: 'Parent Link Flow', description: 'Parent child linking and consent management' },
+          { name: 'Admin Governance', description: 'Role approval rules, pre-reg identity imports & settings' },
+          { name: 'Academic Admin', description: 'Academic years, terms, periods, and location tree' },
+          { name: 'Student Invoices', description: 'Student invoices and fee schedules' },
+          { name: 'Scholarships', description: 'Scholarship browsing and applications' },
+          { name: 'Library Desk', description: 'Library catalog, physical book loans, and returns' },
+          { name: 'Finance Admin', description: 'Fee heads, invoice generation, waiver requests, and late fine runs' },
+          { name: 'Mess & Hostel', description: 'Mess dish master catalog, daily meal menu, and bed allocations' },
+          { name: 'Exam Management', description: 'Exam paper schedule and automated seating plans' },
+          { name: 'Safety & Health', description: 'SOS escalation hierarchy, safety cases, counselling, and medical clinic' },
+          { name: 'Transport Fleet', description: 'Fleet vehicles, drivers, trips, and GPS telemetry' },
+          { name: 'Clubs & Events', description: 'Student clubs and event awards' },
+          { name: 'Placement Portal', description: 'Placement companies, drive eligibility, and candidate selection' },
+          { name: 'System & Privacy', description: 'Quiet hours, access audit logs, consent records, app config, and retention' },
           { name: 'Student', description: 'Student persona endpoints' },
           { name: 'Warden', description: 'Warden & Hostel operations endpoints' },
           { name: 'Faculty', description: 'Faculty & Classroom management endpoints' },
@@ -64,6 +86,12 @@ const app = new Elysia()
   .group('/api/v1', (app) =>
     app
       .use(authRoutes)
+      .use(onboardingRoutes)
+      .use(approvalsRoutes)
+      .use(adminGovernanceRoutes)
+      .use(campusOpsRoutes)
+      .use(financeHealthRoutes)
+      .use(transportPlacementsRoutes)
       .use(studentRoutes)
       .use(wardenRoutes)
       .use(facultyRoutes)

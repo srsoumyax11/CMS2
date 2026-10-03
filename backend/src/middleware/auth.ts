@@ -39,7 +39,7 @@ export const jwtAuth = new Elysia({ name: 'jwtAuth' })
           },
         });
 
-        if (user && user.status === 'active' && !user.deleted_at) {
+        if (user && ['active', 'registered', 'pending_approval'].includes(user.status) && !user.deleted_at) {
           const roles = user.user_roles_user_roles_user_idTousers.map((ur: any) => ur.roles.code);
           const authUser: AuthUser = {
             id: user.id,
