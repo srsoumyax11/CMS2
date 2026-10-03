@@ -70,9 +70,26 @@ const app = new Elysia()
     }
     if (code === 'VALIDATION') {
       set.status = 400;
+      let cleanMessage = 'Validation failed';
+      try {
+        const parsed = typeof error.message === 'string' && error.message.trim().startsWith('{')
+          ? JSON.parse(error.message)
+          : null;
+        if (parsed && (parsed.summary || parsed.message)) {
+          const prop = parsed.property ? `Field '${parsed.property.replace(/^\//, '')}': ` : '';
+          cleanMessage = `Validation failed: ${prop}${parsed.summary || parsed.message}`;
+        } else if (error && (error as any).summary) {
+          cleanMessage = `Validation failed: ${(error as any).summary}`;
+        } else if (typeof error.message === 'string') {
+          cleanMessage = error.message;
+        }
+      } catch {
+        cleanMessage = error.message || 'Validation error';
+      }
+
       return {
         success: false,
-        error: error.message || 'Validation error',
+        error: cleanMessage,
         requestId: errorId,
       };
     }
