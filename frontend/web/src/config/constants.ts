@@ -1,0 +1,8 @@
+export const APP_CONSTANTS = {
+  PAGINATION_DEFAULT_LIMIT: 20,
+  TOKEN_REFRESH_INTERVAL_MS: 14 * 60 * 1000, // 14 minutes
+  IDEMPOTENCY_HEADER_KEY: 'x-idempotency-key',
+  CLIENT_TYPE_HEADER_KEY: 'x-client',
+  CLIENT_TYPE_VALUE: 'web',
+  IDLE_TIMEOUT_MS: 30 * 60 * 1000,
+} as const;

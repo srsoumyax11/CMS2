@@ -1,0 +1,17 @@
+{
+  "common": {
+    "appName": "Campus CMS",
+    "loading": "Loading...",
+    "error": "An unexpected error occurred.",
+    "empty": "No data found.",
+    "retry": "Retry",
+    "submit": "Submit",
+    "cancel": "Cancel"
+  },
+  "auth": {
+    "login": "Log In",
+    "logout": "Log Out",
+    "email": "Email Address",
+    "password": "Password"
+  }
+}
