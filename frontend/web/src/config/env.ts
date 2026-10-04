@@ -18,4 +18,9 @@ if (!_env.success) {
   throw new Error(`Environment Validation Error: ${JSON.stringify(_env.error.flatten().fieldErrors, null, 2)}`);
 }
 
+// Production Safety Guard
+if (import.meta.env?.PROD && _env.data.VITE_USE_MOCKS) {
+  throw new Error('PRODUCTION SAFETY FATAL ERROR: VITE_USE_MOCKS must never be enabled in production builds!');
+}
+
 export const env = _env.data;

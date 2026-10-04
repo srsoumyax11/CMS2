@@ -451,6 +451,7 @@ export function DataTable<T extends Record<string, any>>({
                     <th
                       key={field.key}
                       onClick={() => field.sortable !== false && handleSort(field.key)}
+                      title={field.sortable !== false ? 'Sorts this page only' : undefined}
                       className={`py-3 px-4 select-none ${
                         field.sortable !== false ? 'cursor-pointer hover:text-foreground' : ''
                       }`}

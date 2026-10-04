@@ -58,24 +58,46 @@ export const feesApi = {
     return apiClient<InvoiceRecord[]>('/api/v1/student/fees');
   },
 
-  initiatePayment: async (data: {
+  initiateStudentPayment: async (data: {
     invoiceId: string;
-    amount: number;
     paymentMethod: string;
-    studentId?: string;
-  }): Promise<{ success: boolean; transactionId: string; status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }> => {
+  }): Promise<{ success: boolean; transactionId: string; amount: number; status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }> => {
     if (env.VITE_USE_MOCKS) {
       return {
         success: true,
-        transactionId: `tx_mock_${Date.now()}`,
+        transactionId: `tx_std_${Date.now()}`,
+        amount: 18000,
         status: 'SUCCESS',
       };
     }
-    return apiClient<{ success: boolean; transactionId: string; status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }>(
+    return apiClient<{ success: boolean; transactionId: string; amount: number; status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }>(
+      '/api/v1/student/payments/initiate',
+      {
+        method: 'POST',
+        body: JSON.stringify({ invoiceId: data.invoiceId, paymentMethod: data.paymentMethod }),
+        idempotencyKey: createIdempotencyKey(),
+      }
+    );
+  },
+
+  initiateParentPayment: async (data: {
+    invoiceId: string;
+    paymentMethod: string;
+    studentId: string;
+  }): Promise<{ success: boolean; transactionId: string; amount: number; status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }> => {
+    if (env.VITE_USE_MOCKS) {
+      return {
+        success: true,
+        transactionId: `tx_par_${Date.now()}`,
+        amount: 18000,
+        status: 'SUCCESS',
+      };
+    }
+    return apiClient<{ success: boolean; transactionId: string; amount: number; status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }>(
       '/api/v1/parent/payments/initiate',
       {
         method: 'POST',
-        body: JSON.stringify({ studentId: data.studentId || 'std_01', ...data }),
+        body: JSON.stringify(data),
         idempotencyKey: createIdempotencyKey(),
       }
     );
@@ -86,7 +108,7 @@ export const feesApi = {
       return { status: 'SUCCESS' };
     }
     return apiClient<{ status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }>(
-      `/api/v1/payments/verify?tx=${transactionId}`
+      `/api/v1/student/payments/status?tx=${transactionId}`
     );
   },
 

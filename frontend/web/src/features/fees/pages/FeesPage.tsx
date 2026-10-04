@@ -35,12 +35,31 @@ export const FeesPage: React.FC = () => {
   const [ifsc, setIfsc] = useState('');
   const [isSubmittingRefund, setIsSubmittingRefund] = useState(false);
 
+  const [pendingTxAlert, setPendingTxAlert] = useState<{ txId: string; status: string } | null>(null);
+
   useEffect(() => {
     let isMounted = true;
     const loadFees = async () => {
       try {
         const data = await feesApi.getStudentFees();
         if (isMounted) setInvoices(data);
+
+        // Check for pending transaction ID in localStorage (never trust URL params!)
+        const savedTxId = localStorage.getItem('cms_pending_payment_tx');
+        if (savedTxId) {
+          const verifyRes = await feesApi.verifyPaymentStatus(savedTxId);
+          if (isMounted) {
+            if (verifyRes.status === 'SUCCESS') {
+              localStorage.removeItem('cms_pending_payment_tx');
+              setPaymentSuccess(`Verified payment complete! Ref ID: ${savedTxId}`);
+            } else if (verifyRes.status === 'FAILED') {
+              localStorage.removeItem('cms_pending_payment_tx');
+              setPaymentError(`Payment transaction ${savedTxId} failed.`);
+            } else {
+              setPendingTxAlert({ txId: savedTxId, status: verifyRes.status });
+            }
+          }
+        }
       } catch {
         // ignore
       } finally {
@@ -66,27 +85,39 @@ export const FeesPage: React.FC = () => {
       setIsProcessingPayment(true);
       setPaymentError(null);
 
-      // Execute payment
+      // Single-flight payment initiation
       const res = await feesApi.initiatePayment({
         invoiceId: selectedInvoice.id,
         amount: selectedInvoice.dueAmount,
         paymentMethod,
+        studentId: user?.id,
       });
 
-      setPaymentSuccess(`Payment successful! Ref ID: ${res.transactionId || 'TXN_' + Date.now()}`);
+      // Store only the transaction ID
+      if (res.transactionId) {
+        localStorage.setItem('cms_pending_payment_tx', res.transactionId);
+      }
 
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === selectedInvoice.id
-            ? { ...inv, status: 'PAID', dueAmount: 0, paidAmount: inv.totalAmount }
-            : inv
-        )
-      );
+      // Always re-read payment status from backend
+      const verifyRes = await feesApi.verifyPaymentStatus(res.transactionId || 'tx_demo');
 
-      setTimeout(() => {
-        setSelectedInvoice(null);
-        setPaymentSuccess(null);
-      }, 1500);
+      if (verifyRes.status === 'SUCCESS') {
+        localStorage.removeItem('cms_pending_payment_tx');
+        setPaymentSuccess(`Payment authorized and verified! Ref ID: ${res.transactionId || 'TXN_' + Date.now()}`);
+        setInvoices((prev) =>
+          prev.map((inv) =>
+            inv.id === selectedInvoice.id
+              ? { ...inv, status: 'PAID', dueAmount: 0, paidAmount: inv.totalAmount }
+              : inv
+          )
+        );
+        setTimeout(() => {
+          setSelectedInvoice(null);
+          setPaymentSuccess(null);
+        }, 1500);
+      } else {
+        setPendingTxAlert({ txId: res.transactionId, status: verifyRes.status });
+      }
     } catch (err: unknown) {
       setPaymentError(err instanceof Error ? err.message : 'Payment processing failed. Please try again.');
     } finally {
@@ -136,6 +167,30 @@ export const FeesPage: React.FC = () => {
           <span>Request Fee Refund</span>
         </Button>
       </div>
+
+      {pendingTxAlert && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-xl text-xs flex items-center justify-between font-semibold">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <span>Pending Payment Transaction Detected: {pendingTxAlert.txId} (Status: {pendingTxAlert.status})</span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-amber-500 text-amber-500 text-xs h-7"
+            onClick={async () => {
+              const check = await feesApi.verifyPaymentStatus(pendingTxAlert.txId);
+              if (check.status === 'SUCCESS') {
+                localStorage.removeItem('cms_pending_payment_tx');
+                setPendingTxAlert(null);
+                setPaymentSuccess(`Payment verified! Ref: ${pendingTxAlert.txId}`);
+              }
+            }}
+          >
+            Re-check Status
+          </Button>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground text-sm animate-pulse">
