@@ -16,4 +16,6 @@ export const APP_CONSTANTS = {
   EVIDENCE_ALLOWED_TYPES: ['image/jpeg', 'image/png', 'application/pdf'],
   TABLE_PREFS_STORAGE_PREFIX: 'cms_table_prefs_',
   DEBOUNCE_SEARCH_MS: 300,
+  DEFAULT_ATTENDANCE_WARNING_THRESHOLD: 75,
+  EMERGENCY_BROADCAST_CONFIRM_WORD: 'CONFIRM',
 } as const;

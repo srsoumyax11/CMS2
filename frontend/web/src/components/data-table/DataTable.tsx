@@ -142,16 +142,6 @@ export function DataTable<T extends Record<string, any>>({
         setIsError(true);
         setErrorMessage(errorObj?.message || 'Failed to fetch resource data');
         setRequestId(errorObj?.requestId || 'REQ_ERR');
-        if (env.VITE_USE_MOCKS && resource.mockFallback) {
-          const mockRes = resource.mockFallback({
-            page: urlState.page,
-            limit: urlState.limit,
-            search: urlState.search,
-          });
-          setRecords(mockRes.data);
-          setTotalCount(mockRes.total);
-          setIsError(false);
-        }
       } finally {
         if (!isCancelled) setIsLoading(false);
       }

@@ -15,6 +15,8 @@ import {
   Users,
 } from 'lucide-react';
 
+import { APP_CONSTANTS } from '@/config/constants';
+
 export const AdminDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ROLES' | 'GUARDIANS' | 'BROADCAST'>('ROLES');
 
@@ -28,6 +30,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [targetRole, setTargetRole] = useState('ALL');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
+  const [showBroadcastConfirm, setShowBroadcastConfirm] = useState(false);
+  const [confirmWordInput, setConfirmWordInput] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -138,8 +142,8 @@ export const AdminDashboardPage: React.FC = () => {
     );
   };
 
-  const handleSendBroadcast = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendBroadcast = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!broadcastTitle || !broadcastMessage) return;
 
     try {
@@ -157,6 +161,8 @@ export const AdminDashboardPage: React.FC = () => {
       setBroadcastSuccess(true);
       setBroadcastTitle('');
       setBroadcastMessage('');
+      setShowBroadcastConfirm(false);
+      setConfirmWordInput('');
       setTimeout(() => setBroadcastSuccess(false), 3000);
     } catch {
       // ignore
@@ -257,7 +263,15 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
               )}
 
-              <form onSubmit={handleSendBroadcast} className="space-y-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (broadcastTitle && broadcastMessage) {
+                    setShowBroadcastConfirm(true);
+                  }
+                }}
+                className="space-y-4"
+              >
                 <div>
                   <label className="text-xs font-semibold text-foreground">Target Role Audience</label>
                   <select
@@ -296,9 +310,52 @@ export const AdminDashboardPage: React.FC = () => {
 
                 <Button type="submit" disabled={isBroadcasting} className="w-full gap-2">
                   <Bell className="h-4 w-4" />
-                  <span>{isBroadcasting ? 'Broadcasting...' : 'Publish Announcement'}</span>
+                  <span>Review Broadcast Details</span>
                 </Button>
               </form>
+            </div>
+          )}
+
+          {/* Broadcast Confirmation Modal */}
+          {showBroadcastConfirm && (
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-card border rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <div className="flex items-center gap-2 border-b pb-3 text-red-500">
+                  <Megaphone className="h-6 w-6" />
+                  <h2 className="text-lg font-bold text-foreground">Confirm Emergency Broadcast</h2>
+                </div>
+
+                <div className="space-y-2 text-xs bg-muted/40 p-3 rounded-lg">
+                  <p><span className="font-bold text-foreground">Target Audience:</span> {targetRole}</p>
+                  <p><span className="font-bold text-foreground">Title:</span> {broadcastTitle}</p>
+                  <p><span className="font-bold text-foreground">Message:</span> {broadcastMessage}</p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-1">
+                    Type <span className="font-mono font-bold text-red-500">{APP_CONSTANTS.EMERGENCY_BROADCAST_CONFIRM_WORD}</span> to authorize dispatch:
+                  </label>
+                  <Input
+                    value={confirmWordInput}
+                    onChange={(e) => setConfirmWordInput(e.target.value)}
+                    placeholder={`Type ${APP_CONSTANTS.EMERGENCY_BROADCAST_CONFIRM_WORD}`}
+                    className="text-xs font-mono uppercase"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" type="button" onClick={() => setShowBroadcastConfirm(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSendBroadcast}
+                    disabled={isBroadcasting || confirmWordInput.trim().toUpperCase() !== APP_CONSTANTS.EMERGENCY_BROADCAST_CONFIRM_WORD}
+                    className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs"
+                  >
+                    {isBroadcasting ? 'Transmitting...' : 'TRANSMIT BROADCAST'}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>

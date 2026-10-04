@@ -62,14 +62,31 @@ export const feesApi = {
     invoiceId: string;
     amount: number;
     paymentMethod: string;
-  }): Promise<{ success: boolean; transactionId: string; receiptUrl: string }> => {
-    return apiClient<{ success: boolean; transactionId: string; receiptUrl: string }>(
+    studentId?: string;
+  }): Promise<{ success: boolean; transactionId: string; status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }> => {
+    if (env.VITE_USE_MOCKS) {
+      return {
+        success: true,
+        transactionId: `tx_mock_${Date.now()}`,
+        status: 'SUCCESS',
+      };
+    }
+    return apiClient<{ success: boolean; transactionId: string; status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }>(
       '/api/v1/parent/payments/initiate',
       {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify({ studentId: data.studentId || 'std_01', ...data }),
         idempotencyKey: createIdempotencyKey(),
       }
+    );
+  },
+
+  verifyPaymentStatus: async (transactionId: string): Promise<{ status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }> => {
+    if (env.VITE_USE_MOCKS) {
+      return { status: 'SUCCESS' };
+    }
+    return apiClient<{ status: 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED' }>(
+      `/api/v1/payments/verify?tx=${transactionId}`
     );
   },
 

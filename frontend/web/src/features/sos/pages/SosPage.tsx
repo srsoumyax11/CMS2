@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { sosApi, SosRecord, EmergencyContactInfo } from '@/features/sos/api';
+import { createIdempotencyKey } from '@/lib/apiClient';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { MockBanner } from '@/components/ui/MockBanner';
@@ -67,16 +68,13 @@ export const SosPage: React.FC = () => {
   }, []);
 
   const handleTriggerSos = async () => {
-    if (!location.trim()) {
-      alert('Please enter your location or room number.');
-      return;
-    }
+    const locString = location.trim() || 'Location Access Denied / Custom Entry';
 
     try {
       setIsTriggering(true);
       const res = await sosApi.triggerSos({
         emergencyType,
-        location: location.trim(),
+        location: locString,
         latitude: coords.lat,
         longitude: coords.lng,
       });
@@ -84,7 +82,7 @@ export const SosPage: React.FC = () => {
       const newAlert: SosRecord = {
         id: res?.id || `sos_${Date.now()}`,
         emergencyType,
-        location: location.trim(),
+        location: locString,
         latitude: coords.lat,
         longitude: coords.lng,
         status: 'ACTIVE',
@@ -93,16 +91,31 @@ export const SosPage: React.FC = () => {
       setActiveAlerts((prev) => [newAlert, ...prev]);
       setConfirmTrigger(false);
     } catch {
-      const newMock: SosRecord = {
-        id: `sos_${Date.now()}`,
+      // Failure -> Save to localStorage retry queue with idempotency key
+      const idempotencyKey = createIdempotencyKey();
+      const retryItem = {
+        idempotencyKey,
         emergencyType,
-        location: location.trim(),
+        location: locString,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        timestamp: new Date().toISOString(),
+      };
+
+      const existingQueue = JSON.parse(localStorage.getItem('cms_sos_retry_queue') || '[]');
+      existingQueue.push(retryItem);
+      localStorage.setItem('cms_sos_retry_queue', JSON.stringify(existingQueue));
+
+      const newOfflineAlert: SosRecord = {
+        id: `sos_queued_${Date.now()}`,
+        emergencyType,
+        location: `${locString} (Queued for Retry)`,
         latitude: coords.lat,
         longitude: coords.lng,
         status: 'ACTIVE',
         triggeredAt: new Date().toLocaleTimeString(),
       };
-      setActiveAlerts((prev) => [newMock, ...prev]);
+      setActiveAlerts((prev) => [newOfflineAlert, ...prev]);
       setConfirmTrigger(false);
     } finally {
       setIsTriggering(false);

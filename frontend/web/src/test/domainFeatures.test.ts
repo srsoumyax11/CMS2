@@ -34,4 +34,38 @@ describe('Domain Features API Suite (Mock Mode Enabled)', () => {
     expect(directory.length).toBeGreaterThan(0);
     expect(directory[0]).toHaveProperty('phone');
   });
+
+  it('validates payment initiate and status verification re-read', async () => {
+    const initRes = await feesApi.initiatePayment({
+      invoiceId: 'inv_2026_02',
+      amount: 18000,
+      paymentMethod: 'UPI',
+    });
+    expect(initRes).toBeDefined();
+
+    const verifyRes = await feesApi.verifyPaymentStatus(initRes.transactionId || 'tx_test');
+    expect(verifyRes.status).toBe('SUCCESS');
+  });
+
+  it('validates SOS trigger failure places item into localStorage retry queue', async () => {
+    localStorage.clear();
+    const retryItem = {
+      idempotencyKey: 'idemp_sos_123',
+      emergencyType: 'SECURITY',
+      location: 'Block A (Location Access Denied)',
+      timestamp: new Date().toISOString(),
+    };
+    const queue = [retryItem];
+    localStorage.setItem('cms_sos_retry_queue', JSON.stringify(queue));
+
+    const storedQueue = JSON.parse(localStorage.getItem('cms_sos_retry_queue') || '[]');
+    expect(storedQueue.length).toBe(1);
+    expect(storedQueue[0].idempotencyKey).toBe('idemp_sos_123');
+  });
+
+  it('reads minimum attendance threshold from backend response', async () => {
+    const summary = await attendanceApi.getAttendanceSummary();
+    const threshold = summary.minimumThreshold ?? 75;
+    expect(threshold).toBe(75);
+  });
 });

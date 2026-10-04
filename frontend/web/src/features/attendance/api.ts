@@ -16,6 +16,7 @@ export interface AttendanceSummary {
   totalClasses: number;
   totalAttended: number;
   thresholdWarning: boolean;
+  minimumThreshold?: number;
   subjects: SubjectAttendance[];
 }
 

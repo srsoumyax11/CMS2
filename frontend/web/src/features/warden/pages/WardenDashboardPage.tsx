@@ -17,6 +17,18 @@ import {
   Wrench,
 } from 'lucide-react';
 
+import { usePolling } from '@/hooks/usePolling';
+
+interface WardenSosItem {
+  id: string;
+  studentName: string;
+  room: string;
+  type: string;
+  triggeredAt: string;
+  status: string;
+  updates?: string[];
+}
+
 interface WardenOutpassItem {
   id: string;
   title: string;
@@ -30,21 +42,27 @@ interface WardenOutpassItem {
 export const WardenDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'OUTPASS_INBOX' | 'OVERDUE' | 'SOS_ROOM' | 'COMPLAINTS'>('OUTPASS_INBOX');
 
-  interface WardenSosItem {
-    id: string;
-    studentName: string;
-    room: string;
-    type: string;
-    triggeredAt: string;
-    status: string;
-  }
-
   // Outpass Inbox Items
   const [outpassItems, setOutpassItems] = useState<WardenOutpassItem[]>([]);
   const [overdueOutpasses, setOverdueOutpasses] = useState<OutpassRecord[]>([]);
   const [sosAlerts, setSosAlerts] = useState<WardenSosItem[]>([]);
   const [complaints, setComplaints] = useState<ComplaintRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingSosActionId, setPendingSosActionId] = useState<string | null>(null);
+
+  const fetchSosAlerts = React.useCallback(async () => {
+    try {
+      if (!env.VITE_USE_MOCKS) {
+        const sosData = await apiClient<WardenSosItem[]>('/api/v1/warden/sos/active');
+        setSosAlerts(sosData);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Poll active SOS alerts every 10 seconds (pauses when hidden, backs off on errors)
+  usePolling(fetchSosAlerts, { intervalMs: 10000, enabled: activeTab === 'SOS_ROOM' });
 
   useEffect(() => {
     let isMounted = true;
@@ -87,6 +105,7 @@ export const WardenDashboardPage: React.FC = () => {
                 type: 'MEDICAL',
                 triggeredAt: '10 mins ago',
                 status: 'ACTIVE',
+                updates: ['Dispatched campus medical officer.'],
               },
             ]);
           }
@@ -108,19 +127,63 @@ export const WardenDashboardPage: React.FC = () => {
   }, []);
 
   const handleAcknowledgeSos = async (id: string) => {
-    if (!env.VITE_USE_MOCKS) {
-      await apiClient(`/api/v1/warden/sos/${id}/acknowledge`, { method: 'POST' });
+    try {
+      setPendingSosActionId(`${id}_ack`);
+      if (!env.VITE_USE_MOCKS) {
+        await apiClient(`/api/v1/warden/sos/${id}/acknowledge`, { method: 'POST' });
+      }
+      setSosAlerts((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, status: 'ACKNOWLEDGED' } : s))
+      );
+    } finally {
+      setPendingSosActionId(null);
     }
-    setSosAlerts((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: 'ACKNOWLEDGED' } : s))
-    );
+  };
+
+  const handleAddUpdateSos = async (id: string) => {
+    const updateNote = prompt('Enter incident progress update note:');
+    if (!updateNote) return;
+
+    try {
+      setPendingSosActionId(`${id}_update`);
+      if (!env.VITE_USE_MOCKS) {
+        await apiClient(`/api/v1/warden/sos/${id}/update`, {
+          method: 'POST',
+          body: JSON.stringify({ note: updateNote }),
+        });
+      }
+      setSosAlerts((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, updates: [...(s.updates || []), updateNote] } : s))
+      );
+    } finally {
+      setPendingSosActionId(null);
+    }
+  };
+
+  const handleEscalateSos = async (id: string) => {
+    try {
+      setPendingSosActionId(`${id}_esc`);
+      if (!env.VITE_USE_MOCKS) {
+        await apiClient(`/api/v1/warden/sos/${id}/escalate`, { method: 'POST' });
+      }
+      setSosAlerts((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, status: 'ESCALATED' } : s))
+      );
+    } finally {
+      setPendingSosActionId(null);
+    }
   };
 
   const handleCloseSos = async (id: string) => {
-    if (!env.VITE_USE_MOCKS) {
-      await apiClient(`/api/v1/warden/sos/${id}/close`, { method: 'POST' });
+    try {
+      setPendingSosActionId(`${id}_close`);
+      if (!env.VITE_USE_MOCKS) {
+        await apiClient(`/api/v1/warden/sos/${id}/close`, { method: 'POST' });
+      }
+      setSosAlerts((prev) => prev.filter((s) => s.id !== id));
+    } finally {
+      setPendingSosActionId(null);
     }
-    setSosAlerts((prev) => prev.filter((s) => s.id !== id));
   };
 
   return (
@@ -279,21 +342,48 @@ export const WardenDashboardPage: React.FC = () => {
 
                       <p className="text-xs text-muted-foreground">Triggered: {sos.triggeredAt}</p>
 
-                      <div className="flex gap-2 pt-2">
+                      {sos.updates && sos.updates.length > 0 && (
+                        <div className="p-2 bg-muted/40 rounded text-xs space-y-1">
+                          <p className="font-bold text-[10px] text-muted-foreground uppercase">Incident Updates:</p>
+                          {sos.updates.map((upd, idx) => (
+                            <p key={idx} className="text-foreground">• {upd}</p>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-2 pt-2">
                         {sos.status === 'ACTIVE' && (
                           <Button
                             onClick={() => handleAcknowledgeSos(sos.id)}
+                            disabled={Boolean(pendingSosActionId)}
                             className="bg-amber-500 hover:bg-amber-600 text-white text-xs"
                           >
-                            Acknowledge & Dispatch Response
+                            {pendingSosActionId === `${sos.id}_ack` ? 'Sending...' : 'Acknowledge'}
                           </Button>
                         )}
                         <Button
+                          onClick={() => handleAddUpdateSos(sos.id)}
+                          disabled={Boolean(pendingSosActionId)}
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {pendingSosActionId === `${sos.id}_update` ? 'Saving...' : 'Add Update'}
+                        </Button>
+                        <Button
+                          onClick={() => handleEscalateSos(sos.id)}
+                          disabled={Boolean(pendingSosActionId)}
+                          variant="outline"
+                          className="text-xs border-amber-500 text-amber-500"
+                        >
+                          {pendingSosActionId === `${sos.id}_esc` ? 'Escalating...' : 'Escalate'}
+                        </Button>
+                        <Button
                           onClick={() => handleCloseSos(sos.id)}
+                          disabled={Boolean(pendingSosActionId)}
                           variant="outline"
                           className="border-emerald-500 text-emerald-500 hover:bg-emerald-500/10 text-xs"
                         >
-                          Resolve & Close Incident
+                          {pendingSosActionId === `${sos.id}_close` ? 'Closing...' : 'Close Incident'}
                         </Button>
                       </div>
                     </div>
