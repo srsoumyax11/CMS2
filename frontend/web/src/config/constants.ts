@@ -4,5 +4,13 @@ export const APP_CONSTANTS = {
   IDEMPOTENCY_HEADER_KEY: 'x-idempotency-key',
   CLIENT_TYPE_HEADER_KEY: 'x-client',
   CLIENT_TYPE_VALUE: 'web',
+  REQUEST_ID_HEADER_KEY: 'x-request-id',
+  RETRY_AFTER_HEADER_KEY: 'retry-after',
   IDLE_TIMEOUT_MS: 30 * 60 * 1000,
+  HTTP_TIMEOUT_MS: 15000, // 15 seconds
+  OTP_LENGTH: 6,
+  OTP_RESEND_COOLDOWN_SEC: 60,
+  PASSWORD_MIN_LENGTH: 8,
+  EVIDENCE_MAX_SIZE_BYTES: 5 * 1024 * 1024, // 5MB
+  EVIDENCE_ALLOWED_TYPES: ['image/jpeg', 'image/png', 'application/pdf'],
 } as const;

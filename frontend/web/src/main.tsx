@@ -1,10 +1,19 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { AppQueryProvider } from '@/app/providers/QueryClientProvider';
+import { AuthProvider } from '@/app/providers/AuthProvider';
+import { ToastProvider } from '@/components/ui/Toast';
+import { AppRouter } from '@/app/router';
+import '@/styles/tokens.css';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <AppQueryProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <AppRouter />
+        </ToastProvider>
+      </AuthProvider>
+    </AppQueryProvider>
+  </React.StrictMode>,
+);

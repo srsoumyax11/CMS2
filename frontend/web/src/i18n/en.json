@@ -3,15 +3,95 @@
     "appName": "Campus CMS",
     "loading": "Loading...",
     "error": "An unexpected error occurred.",
-    "empty": "No data found.",
+    "empty": "No items found.",
     "retry": "Retry",
     "submit": "Submit",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "save": "Save Changes",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "logout": "Log Out",
+    "profile": "My Profile",
+    "dashboard": "Dashboard",
+    "requestId": "Request ID"
   },
   "auth": {
+    "welcome": "Welcome to Campus CMS",
+    "tagline": "Integrated Smart Campus Management Platform",
     "login": "Log In",
-    "logout": "Log Out",
+    "signup": "Sign Up",
     "email": "Email Address",
-    "password": "Password"
+    "emailOrId": "Email or ID",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "fullName": "Full Name",
+    "verifyOtp": "Verify Email OTP",
+    "otpCode": "Enter 6-digit Code",
+    "resendOtp": "Resend Code",
+    "cooldownMessage": "You can resend in {seconds} seconds.",
+    "rateLimited": "Too many requests. Please wait {seconds} seconds before trying again.",
+    "twoFactorTitle": "Two-Factor Verification",
+    "twoFactorDesc": "Enter code from your authenticator app or backup code",
+    "useBackupCode": "Use Backup Code",
+    "backupCode": "Backup Code",
+    "forgotPassword": "Forgot Password?",
+    "emailRegistered": "An account with this email address already exists.",
+    "logoutAllDevices": "Log Out All Devices"
+  },
+  "dashboard": {
+    "welcomeUser": "Welcome back, {name}!",
+    "profileCompletion": "Profile Completion",
+    "roleStatus": "Role Request Status",
+    "quickActions": "Quick Actions",
+    "recentNotifications": "Recent Notifications"
+  },
+  "profile": {
+    "title": "Account & Profile",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "devices": "Active Devices & Sessions",
+    "revokeDevice": "Revoke Session"
+  },
+  "onboarding": {
+    "requestRoleTitle": "Select Your Campus Role",
+    "requestRoleDesc": "Choose your primary role to unlock campus workflows",
+    "parentCardTitle": "I am a Parent / Guardian",
+    "parentCardDesc": "Link to your student's profile directly using admission details",
+    "studentForm": "Student Account Information",
+    "facultyForm": "Faculty Staff Information",
+    "wardenForm": "Hostel Warden Information",
+    "parentForm": "Parent Link Form",
+    "rollNumber": "Roll Number",
+    "registrationNumber": "Registration Number",
+    "department": "Department",
+    "course": "Course",
+    "admissionYear": "Admission Year",
+    "employeeCode": "Employee Code",
+    "hostelName": "Hostel Name",
+    "admissionNumber": "Student Admission Number",
+    "studentDob": "Student Date of Birth",
+    "relation": "Relation to Student",
+    "evidenceUpload": "Supporting Evidence / ID Document",
+    "evidenceUploaded": "Evidence Document Attached",
+    "applicationSubmitted": "Application submitted. We will notify you when it is reviewed."
+  },
+  "applications": {
+    "myApplications": "My Role Applications",
+    "timeline": "Application History Timeline",
+    "cancelApplication": "Cancel Pending Request",
+    "needsInfo": "Information Required",
+    "reapply": "Reapply Request",
+    "rejectionReason": "Rejection Feedback"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markRead": "Mark as Read",
+    "unreadBadge": "Unread"
+  },
+  "blocked": {
+    "title": "Account Blocked / Frozen",
+    "message": "Your account has been temporarily restricted. Please contact campus administration."
   }
 }
