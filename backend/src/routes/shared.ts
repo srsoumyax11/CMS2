@@ -252,4 +252,77 @@ export const sharedRoutes = new Elysia()
         summary: 'Payment gateway webhook listener',
       },
     }
+  )
+
+  /**
+   * GET /api/v1/notifications
+   * List in-app notifications for authenticated user
+   */
+  .get(
+    '/notifications',
+    async ({ user, set }) => {
+      try {
+        if (!user) {
+          set.status = 401;
+          return errorResponse('UNAUTHORIZED', 'Authentication required');
+        }
+
+        const list = await prisma.notifications.findMany({
+          where: { user_id: user.id },
+          orderBy: { created_at: 'desc' },
+          take: 50,
+        });
+
+        const unreadCount = await prisma.notifications.count({
+          where: { user_id: user.id, read_at: null },
+        });
+
+        return successResponse({ notifications: list, unreadCount }, 'In-app notifications retrieved');
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('FETCH_FAILED', 'Failed to fetch notifications');
+      }
+    },
+    {
+      detail: { tags: ['Notifications'], summary: 'List user in-app notifications' },
+    }
+  )
+
+  /**
+   * POST /api/v1/notifications/:id/read
+   * Mark an in-app notification as read
+   */
+  .post(
+    '/notifications/:id/read',
+    async ({ user, params, set }) => {
+      try {
+        if (!user) {
+          set.status = 401;
+          return errorResponse('UNAUTHORIZED', 'Authentication required');
+        }
+
+        const notification = await prisma.notifications.findFirst({
+          where: { id: params.id, user_id: user.id },
+        });
+
+        if (!notification) {
+          set.status = 404;
+          return errorResponse('NOT_FOUND', 'Notification not found');
+        }
+
+        const updated = await prisma.notifications.update({
+          where: { id: params.id },
+          data: { read_at: new Date() },
+        });
+
+        return successResponse(updated, 'Notification marked as read');
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('UPDATE_FAILED', 'Failed to mark notification as read');
+      }
+    },
+    {
+      params: t.Object({ id: t.String({ format: 'uuid' }) }),
+      detail: { tags: ['Notifications'], summary: 'Mark in-app notification as read' },
+    }
   );

@@ -2,7 +2,7 @@ import React from 'react';
 import { useRouter } from 'expo-router';
 import { WelcomeScreen } from '@campus/features';
 
-export default function Index() {
+export default function WelcomeRoute() {
   const router = useRouter();
 
   return (
@@ -13,4 +13,3 @@ export default function Index() {
     />
   );
 }
-

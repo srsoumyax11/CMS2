@@ -565,7 +565,19 @@ export const onboardingRoutes = new Elysia()
           return errorResponse('UNAUTHORIZED', 'Authentication token required');
         }
 
-        const { roleCode, claimedCode, departmentId, hostelId, evidenceFileId } = body;
+        const {
+          roleCode,
+          claimedCode,
+          claimedRollNo,
+          claimedRegistrationNo,
+          claimedCourseId,
+          claimedCourseText,
+          claimedAdmissionYear,
+          claimedEmployeeCode,
+          departmentId,
+          hostelId,
+          evidenceFileId,
+        } = body;
         const role = await prisma.roles.findUnique({ where: { code: roleCode } });
 
         if (!role) {
@@ -592,6 +604,12 @@ export const onboardingRoutes = new Elysia()
             user_id: user.id,
             role_id: role.id,
             claimed_code: claimedCode,
+            claimed_roll_no: claimedRollNo,
+            claimed_registration_no: claimedRegistrationNo,
+            claimed_course_id: claimedCourseId,
+            claimed_course_text: claimedCourseText,
+            claimed_admission_year: claimedAdmissionYear ? Number(claimedAdmissionYear) : null,
+            claimed_employee_code: claimedEmployeeCode,
             department_id: departmentId,
             hostel_id: hostelId,
             evidence_file_id: evidenceFileId,
@@ -610,6 +628,12 @@ export const onboardingRoutes = new Elysia()
       body: t.Object({
         roleCode: t.String(),
         claimedCode: t.Optional(t.String()),
+        claimedRollNo: t.Optional(t.String()),
+        claimedRegistrationNo: t.Optional(t.String()),
+        claimedCourseId: t.Optional(t.String({ format: 'uuid' })),
+        claimedCourseText: t.Optional(t.String()),
+        claimedAdmissionYear: t.Optional(t.Numeric()),
+        claimedEmployeeCode: t.Optional(t.String()),
         departmentId: t.Optional(t.String({ format: 'uuid' })),
         hostelId: t.Optional(t.String({ format: 'uuid' })),
         evidenceFileId: t.Optional(t.String({ format: 'uuid' })),

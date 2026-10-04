@@ -16,6 +16,34 @@ export class InMemoryQueueStorage implements StorageAdapter {
   }
 }
 
+export class PersistentStorageAdapter implements StorageAdapter {
+  private memoryFallback = new InMemoryQueueStorage();
+
+  async getItem(key: string): Promise<string | null> {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        return window.localStorage.getItem(key);
+      } catch {
+        return this.memoryFallback.getItem(key);
+      }
+    }
+    return this.memoryFallback.getItem(key);
+  }
+
+  async setItem(key: string, value: string): Promise<void> {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.setItem(key, value);
+        return;
+      } catch {
+        this.memoryFallback.setItem(key, value);
+        return;
+      }
+    }
+    this.memoryFallback.setItem(key, value);
+  }
+}
+
 export interface QueuedAction {
   id: string;
   idempotencyKey: string;

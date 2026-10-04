@@ -20,13 +20,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
           <AuthSessionProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(onboarding)" />
-              <Stack.Screen name="(dashboard)" />
-              <Stack.Screen name="(blocked)" />
-              <Stack.Screen name="+not-found" />
-            </Stack>
+            <Stack screenOptions={{ headerShown: false }} />
           </AuthSessionProvider>
         </SafeAreaProvider>
       </QueryClientProvider>

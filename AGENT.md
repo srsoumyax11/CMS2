@@ -39,7 +39,8 @@
 - **Testing Runner**: Bun Test (`bun test`)
 
 ### Quality & Testing Conventions
-1. **Strict Validation**: Every API endpoint MUST validate inputs using Zod schemas before reaching business logic or Prisma queries.
+1. **Mandatory OpenAPI / Swagger Documentation**: Whenever researching, adding, or updating any API route or data contract, you MUST document all request payloads, query params, and response DTO envelopes in Elysia route options (`detail: { tags: [...], summary: '...' }` and `response: defaultResponses`).
+2. **Strict Validation**: Every API endpoint MUST validate inputs using Zod schemas before reaching business logic or Prisma queries.
 2. **Security First**: 
    - No mock authentication tokens. Real signed JWTs only.
    - Enforce explicit role and scope guards (`requireRoles`, row-level access control) on all protected routes.

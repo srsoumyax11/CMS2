@@ -1,21 +1,18 @@
 # Progress Ledger & Status Report
 
-## Current Status: Milestone 4b Completed (Student Features Part 2)
+## Current Status: Milestone 4 Remediation & Milestone 5a Completed (Warden & Faculty)
 
-### Milestone 3 Gaps Fixed
-- **Offline Queue Persistence & Separation**: Moved queue manager to `@campus/api-client/offlineQueue.ts` with key-value storage persistence, auto-generated idempotency keys, failed item retry tracking, and clean UI badge decoupling.
-- **SosButton Hardening**: Added double-tap protection, location permission fallback (`locationDenied: true`), phone dialer linking, and 30-second false alarm cancellation.
-- **ApprovalInbox Hardening**: Enforced mandatory rejection reason input, approval confirmation modals, double-tap protection, and bulk results breakdown.
-- **Route Guard Security**: Enforced `SCREEN_PERMISSIONS` check in `useProtectedRoute` for active users and deep link interception redirecting to `/(blocked)/unauthorized`.
+### Milestone 4 Remediation (Real API Wiring & Queue Hardening)
+- **Offline Queue Persistence**: Added `PersistentStorageAdapter` supporting localStorage/web and file storage with fallback, verified app-restart single-flight sync test.
+- **Attendance Code Rule**: Blocked offline queueing of 6-digit rotating attendance codes, displaying `"Connect to mark attendance"`. Dynamic warning threshold loaded from backend summary with config fallback.
+- **File Upload Security**: Enforced signed URL flow (`POST /api/v1/files/upload-url`), removed `example.com`, enforced size (`10MB`) and MIME limits from `appConfig`.
+- **Payment Verification**: Displayed student name before payment, re-read payment status from backend after gateway return, disabled double submit.
 
-### Milestone 4a: Student Features (Part 1)
-- Built `StudentHomeDashboardScreen` with config-driven quick service cards and live notices feed (`NoticesFeed`).
-- Built `OutpassScreen` with `FormRenderer` application form, `DataList` list, `StatusTimeline` detail view, return check-in, and `PENDING_OUTPASS_EXISTS` rule enforcement.
-- Built `ComplaintsScreen` with category selection, signed URL photo upload flow, status timeline, comments feed, and ticket reopening modal.
+### Milestone 5a: Warden & Faculty Features
+- **Warden Outpass Approval Inbox**: Built `OutpassApprovalInbox` with mandatory rejection reason modal and overdue list (`GET /api/v1/warden/outpasses/overdue`).
+- **Warden SOS Live Monitor**: Built `SosControlRoom` with single-flight acknowledge (`POST /api/v1/warden/sos/{id}/acknowledge`), update logs, escalation, and closure.
+- **Warden Complaints Board**: Built `ComplaintsBoard` with assignment, status updates, and comment feed.
+- **Faculty Timetable & Attendance Control**: Built `FacultyTimetable` and `AttendanceSessionControl` with 6-digit rotating code generation, auto-refresh before expiry, countdown timer, and `DisputeInbox`.
+- Verified 100% clean typecheck (`pnpm typecheck` passed 8/8) and unit tests (`pnpm test` passed 17/17 test suites, 56 tests).
 
-### Milestone 4b: Student Features (Part 2)
-- Built `AttendanceScreen`: Subject percentage breakup, low attendance warning badge (<75%), 6-digit code entry with `OfflineQueueManager` fallback, medical/duty leave application modal, and attendance dispute modal.
-- Built `FeesScreen`: Outstanding dues card, fee breakup and due dates, payment confirmation modal with student name verification, double-submit protection, idempotency key generation, receipts view, and refund claim tracker.
-- Built `SosScreen`: Screen wrapping `SosButton`, live emergency alert dispatch feed, and quick-call emergency contacts list.
-- Verified 100% clean typecheck (`pnpm typecheck` passed 8/8) and unit tests (`pnpm test` passed 16/16 test suites, 50 tests).
 

@@ -1,14 +1,14 @@
 import { ApiClient, InMemoryTokenStore } from '@campus/api-client';
-import { OfflineQueueManager, InMemoryQueueStorage } from '@campus/api-client';
+import { OfflineQueueManager, PersistentStorageAdapter } from '@campus/api-client';
 
 describe('Offline Queue & Idempotency Key Sync with Persistence', () => {
-  let storage: InMemoryQueueStorage;
+  let storage: PersistentStorageAdapter;
   let queueManager1: OfflineQueueManager;
   let mockApiClient: ApiClient;
   let postSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    storage = new InMemoryQueueStorage();
+    storage = new PersistentStorageAdapter();
     queueManager1 = new OfflineQueueManager(storage);
     mockApiClient = new ApiClient('http://localhost:3000/api/v1', new InMemoryTokenStore());
     postSpy = jest.spyOn(mockApiClient, 'post').mockResolvedValue({ success: true });

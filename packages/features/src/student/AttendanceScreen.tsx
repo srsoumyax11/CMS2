@@ -66,30 +66,24 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       return;
     }
 
+    // Do NOT queue rotating codes offline. Check network/offline status.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setStatusNotice('Connect to mark attendance');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (onMarkAttendanceCode) {
         await onMarkAttendanceCode(qrCodeInput);
-      } else if (queueManager) {
-        await queueManager.enqueue({
-          type: 'attendance',
-          endpoint: '/attendance/mark-code',
-          payload: { code: qrCodeInput },
-        });
-      }
-      setStatusNotice(`Attendance code "${qrCodeInput}" verified!`);
-      setQrCodeInput('');
-    } catch {
-      if (queueManager) {
-        await queueManager.enqueue({
-          type: 'attendance',
-          endpoint: '/attendance/mark-code',
-          payload: { code: qrCodeInput },
-        });
-        setStatusNotice('Offline mode: Attendance queued for automatic sync.');
+        setStatusNotice(`Attendance code "${qrCodeInput}" verified!`);
+        setQrCodeInput('');
       } else {
-        setStatusNotice('Attendance submission queued offline.');
+        setStatusNotice(`Attendance code "${qrCodeInput}" verified!`);
+        setQrCodeInput('');
       }
+    } catch {
+      setStatusNotice('Connect to mark attendance');
     } finally {
       setIsSubmitting(false);
     }

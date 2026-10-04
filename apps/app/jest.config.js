@@ -10,6 +10,7 @@ module.exports = {
     '^@campus/i18n$': '<rootDir>/../../packages/i18n/src/index',
     '^@campus/logger$': '<rootDir>/../../packages/logger/src/index',
     '^@campus/ui$': '<rootDir>/../../packages/ui/src/index',
+    '^@campus/features$': '<rootDir>/../../packages/features/src/index',
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   testMatch: ['<rootDir>/tests/**/*.test.ts', '<rootDir>/tests/**/*.test.tsx'],

@@ -139,8 +139,7 @@ export async function issueAuthSession({
   set: any;
 }) {
   const isWeb = request?.headers ? request.headers.get('x-client')?.toLowerCase() === 'web' : false;
-  const headerIp = request?.headers ? (request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')) : null;
-  const clientIp = (headerIp || '127.0.0.1').split(',')[0]!.trim();
+  const clientIp = getClientIp(request);
 
   const accessToken = signAccessToken({ sub: user.id, userCode: user.user_code || '' });
   const refreshToken = signRefreshToken({ sub: user.id, userCode: user.user_code || '' });

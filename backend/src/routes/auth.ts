@@ -91,8 +91,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           data: { last_login_at: new Date() },
         });
 
-        const headerIp = request?.headers ? (request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')) : null;
-        const clientIp = (headerIp || '127.0.0.1').split(',')[0]!.trim();
+        const clientIp = getClientIp(request);
 
         // Record audit log entry
         await prisma.audit_logs.create({

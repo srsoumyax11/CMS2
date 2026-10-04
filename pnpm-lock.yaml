@@ -267,6 +267,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@campus/api-client':
+        specifier: workspace:*
+        version: link:../api-client
       '@campus/config':
         specifier: workspace:*
         version: link:../config

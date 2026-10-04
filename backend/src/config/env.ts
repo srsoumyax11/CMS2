@@ -28,6 +28,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('*'),
   CORS_ORIGINS: z.string().default('http://localhost:8081,http://localhost:3000'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  LOG_FORMAT: z.enum(['pretty', 'json']).optional(),
   MAX_FILE_SIZE_BYTES: z.coerce.number().default(10485760), // 10MB
   SKIP_RATE_LIMIT: z.preprocess((v) => toLowerBool(v, 'false'), z.enum(['true', 'false'])).default('false'),
   ENABLE_TEST_RATE_LIMIT: z.preprocess((v) => toLowerBool(v, 'false'), z.enum(['true', 'false'])).default('false'),
@@ -57,6 +58,12 @@ if (parsedEnv.NODE_ENV === 'production') {
   }
   if (process.env.ENABLE_SWAGGER === undefined) {
     (parsedEnv as any).ENABLE_SWAGGER = 'false';
+  }
+  if (parsedEnv.LOG_FORMAT === 'pretty') {
+    logger.warn({
+      message: '[Compliance Warning] LOG_FORMAT=pretty is prohibited in production. Forcing LOG_FORMAT to json.',
+    });
+    (parsedEnv as any).LOG_FORMAT = 'json';
   }
 }
 

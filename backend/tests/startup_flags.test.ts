@@ -45,4 +45,19 @@ describe('Production Environment Flags & Startup Safety', () => {
       delete (require.cache as any)[require.resolve('../src/config/env')];
     }
   });
+
+  it('forces LOG_FORMAT to json in production mode even if set to pretty', () => {
+    const originalEnv = { ...process.env };
+    try {
+      process.env.NODE_ENV = 'production';
+      process.env.LOG_FORMAT = 'pretty';
+      delete (require.cache as any)[require.resolve('../src/config/env')];
+
+      const { env } = require('../src/config/env');
+      expect(env.LOG_FORMAT).toBe('json');
+    } finally {
+      process.env = originalEnv;
+      delete (require.cache as any)[require.resolve('../src/config/env')];
+    }
+  });
 });

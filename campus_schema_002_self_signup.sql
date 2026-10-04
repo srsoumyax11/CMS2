@@ -38,6 +38,12 @@ CREATE TABLE role_requests (
   user_id uuid NOT NULL REFERENCES users(id),
   role_id uuid NOT NULL REFERENCES roles(id),
   claimed_code text,                               -- admission no or employee code
+  claimed_roll_no text,
+  claimed_registration_no text,
+  claimed_course_id uuid REFERENCES courses(id),
+  claimed_course_text text,
+  claimed_admission_year integer,
+  claimed_employee_code text,
   department_id uuid REFERENCES departments(id),   -- scope for faculty, HOD
   hostel_id uuid REFERENCES hostels(id),           -- scope for warden
   evidence_file_id uuid REFERENCES files(id),      -- ID card, offer letter

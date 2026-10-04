@@ -21,13 +21,14 @@ export function useProtectedRoute() {
   useEffect(() => {
     if (isRestoringSession) return;
 
+    const isRootIndex = !segments[0] || segments[0] === 'index' || segments[0] === '';
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboardingGroup = segments[0] === '(onboarding)';
     const inBlockedGroup = segments[0] === '(blocked)';
     const inDashboardGroup = segments[0] === '(dashboard)';
 
     if (!isAuthenticated) {
-      if (!inAuthGroup) {
+      if (!inAuthGroup && !isRootIndex) {
         router.replace('/(auth)/login');
       }
       return;

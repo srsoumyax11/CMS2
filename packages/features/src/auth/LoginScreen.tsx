@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native';
 import { Button, Input, Card } from '@campus/ui';
 import { colors, spacing, typography } from '@campus/design-tokens';
 import { en } from '@campus/i18n';
@@ -33,6 +33,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [securityNotice, setSecurityNotice] = useState<string | null>(null);
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Forgot Password Modal State
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState<'email' | 'verify'>('email');
+  const [forgotNotice, setForgotNotice] = useState<string | null>(null);
 
   const {
     control,
@@ -125,6 +133,43 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
   };
 
+  const handleSendForgotOtp = async () => {
+    if (!forgotEmail) return;
+    setIsLoading(true);
+    setForgotNotice(null);
+    try {
+      await apiClient.post(
+        '/auth/otp/send',
+        z.object({ otpId: z.string().optional() }),
+        { phoneOrEmail: forgotEmail, type: 'password_reset' }
+      );
+      setForgotStep('verify');
+      setForgotNotice('OTP sent to your email.');
+    } catch (err: unknown) {
+      if (err instanceof AppError) setForgotNotice(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async () => {
+    if (!forgotOtp || !newPassword) return;
+    setIsLoading(true);
+    try {
+      await apiClient.post(
+        '/auth/password/reset',
+        z.object({ success: z.boolean().optional() }),
+        { email: forgotEmail, otp: forgotOtp, newPassword }
+      );
+      setSecurityNotice('Password reset successfully. Please log in.');
+      setShowForgotModal(false);
+    } catch (err: unknown) {
+      if (err instanceof AppError) setForgotNotice(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Card style={styles.card}>
@@ -170,6 +215,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 />
               )}
             />
+
+            <TouchableOpacity style={styles.forgotBtn} onPress={() => setShowForgotModal(true)}>
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
+
             <Button
               label={i18nDict.common.login}
               onPress={handleSubmit(onCredentialsSubmit)}
@@ -228,6 +278,52 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </View>
         )}
       </Card>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <Modal transparent animationType="slide" visible={showForgotModal}>
+          <View style={styles.modalOverlay}>
+            <Card style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Reset Forgotten Password</Text>
+              {forgotNotice && <Text style={styles.noticeText}>{forgotNotice}</Text>}
+
+              {forgotStep === 'email' ? (
+                <View>
+                  <Input
+                    label="Account Email"
+                    placeholder="e.g. user@campus.edu"
+                    value={forgotEmail}
+                    onChangeText={setForgotEmail}
+                  />
+                  <View style={styles.modalActions}>
+                    <Button label="Cancel" variant="secondary" onPress={() => setShowForgotModal(false)} />
+                    <Button label="Send Reset OTP" onPress={handleSendForgotOtp} isLoading={isLoading} disabled={!forgotEmail} />
+                  </View>
+                </View>
+              ) : (
+                <View>
+                  <Input
+                    label="Enter OTP Code"
+                    value={forgotOtp}
+                    onChangeText={setForgotOtp}
+                    keyboardType="number-pad"
+                  />
+                  <Input
+                    label="New Password"
+                    secureTextEntry
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                  />
+                  <View style={styles.modalActions}>
+                    <Button label="Cancel" variant="secondary" onPress={() => setShowForgotModal(false)} />
+                    <Button label="Reset Password" onPress={handleResetPasswordSubmit} isLoading={isLoading} disabled={!forgotOtp || !newPassword} />
+                  </View>
+                </View>
+              )}
+            </Card>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -241,6 +337,12 @@ const styles = StyleSheet.create({
     color: colors.gray[900],
     marginBottom: spacing.md,
   },
+  forgotBtn: { alignSelf: 'flex-end', marginVertical: spacing.xs },
+  forgotText: { fontSize: typography.fontSize.xs, color: colors.primary[600], fontWeight: 'bold' },
   errorText: { color: colors.danger.main, marginVertical: spacing.xs },
   noticeText: { color: colors.warning.main, marginVertical: spacing.xs, fontWeight: 'bold' },
+  modalOverlay: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'center', padding: spacing.md },
+  modalCard: { padding: spacing.lg, gap: spacing.sm },
+  modalTitle: { fontSize: typography.fontSize.lg, fontWeight: 'bold', color: colors.gray[900] },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.xs, marginTop: spacing.md },
 });

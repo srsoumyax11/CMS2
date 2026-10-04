@@ -10,3 +10,5 @@
 | GAP-006 | Activities | GET/POST `/activities/events`, `/activities/clubs`, `/activities/placements` | Typed Zod mock in `ActivitiesScreen.tsx` |
 | GAP-007 | Privacy Controls | GET/POST `/privacy/parent-links` | Typed Zod mock in `PrivacySettingsScreen.tsx` |
 | GAP-008 | Staff & Admin Depth | GET/POST `/faculty/*`, `/warden/*`, `/admin/*`, `/parent/*` | Typed Zod mocks in `FacultyDepthScreen.tsx`, `WardenDepthScreen.tsx`, `AdminDepthScreen.tsx`, `ParentDepthScreen.tsx` |
+| GAP-009 | Attendance Warning Threshold | `GET /student/attendance/summary` field `warningThreshold` | Uses `summary.warningThreshold` first, falling back to `appConfig.attendanceThreshold` (75%) if unpopulated |
+

@@ -33,7 +33,8 @@
 3. **Robust Image & Asset Management**: Cache local graphics and icons properly. Use optimized native image wrappers (like `expo-image`) to prevent memory leaks and dropped frames during rendering.
 
 ## Task Tracking, Testing & Quality Conventions
-1. **Unified Task Control**: Always maintain `tasks.md` in the project root (`d:\APP_DEV\PS7\tasks.md`). Update `tasks.md` immediately upon completing any set of backend tasks or frontend UI flows (`[x]`).
+1. **Mandatory OpenAPI / Swagger Documentation**: Whenever researching, adding, or updating any backend route or endpoint contract, you MUST document all request bodies, query params, and response DTO schemas so `/swagger` and `/swagger/json` remain 100% complete.
+2. **Unified Task Control**: Always maintain `tasks.md` in the project root (`d:\APP_DEV\PS7\tasks.md`). Update `tasks.md` immediately upon completing any set of backend tasks or frontend UI flows (`[x]`).
 2. **Synchronized Command Maps**: Keep `common_cmd.md` updated whenever new dev workflows or commands are added (e.g., clearing Metro cache, building production APKs/IPAs, running local emulation).
 3. **Strict TypeScript & Explicit Error Handling**: Maintain strict TypeScript types and explicit status code error handling across backend and frontend code.
 4. **Comprehensive Automated Testing (MANDATORY)**:

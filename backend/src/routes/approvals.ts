@@ -76,13 +76,44 @@ export const approvalsRoutes = new Elysia({ prefix: '/approvals' })
 
         // Auto-check match against pre_registered_identities
         let preRegMatch = null;
+        let mismatches = {
+          codeMismatch: false,
+          roleMismatch: false,
+          departmentMismatch: false,
+          hasMismatch: false,
+        };
+
         if (req.claimed_code) {
           preRegMatch = await prisma.pre_registered_identities.findUnique({
             where: { user_code: req.claimed_code },
+            include: { departments: true, batches: true },
           });
+
+          if (preRegMatch) {
+            const codeMismatch = req.claimed_code !== preRegMatch.user_code;
+            const roleMismatch = req.roles.code !== preRegMatch.expected_role_code;
+            const departmentMismatch = Boolean(req.department_id && preRegMatch.department_id && req.department_id !== preRegMatch.department_id);
+            const hasMismatch = codeMismatch || roleMismatch || departmentMismatch;
+
+            mismatches = {
+              codeMismatch,
+              roleMismatch,
+              departmentMismatch,
+              hasMismatch,
+            };
+          }
         }
 
-        return successResponse({ request: req, preRegMatch }, 'Role request review details retrieved');
+        const claims = {
+          rollNo: req.claimed_roll_no,
+          registrationNo: req.claimed_registration_no,
+          courseId: req.claimed_course_id,
+          courseText: req.claimed_course_text,
+          admissionYear: req.claimed_admission_year,
+          employeeCode: req.claimed_employee_code,
+        };
+
+        return successResponse({ request: req, preRegMatch, claims, mismatches }, 'Role request review details retrieved');
       } catch (error) {
         set.status = 500;
         return errorResponse('FETCH_FAILED', 'Error fetching role request detail');
@@ -194,6 +225,19 @@ export const approvalsRoutes = new Elysia({ prefix: '/approvals' })
           });
         }
 
+        // Create in-app notification for user
+        await prisma.notifications.create({
+          data: {
+            id: crypto.randomUUID(),
+            user_id: req.user_id,
+            kind: 'ROLE_REQUEST_APPROVED',
+            title: 'Role Request Approved',
+            body: `Your request for role '${req.roles.name}' has been approved. Account activated!`,
+            ref_type: 'role_requests',
+            ref_id: req.id,
+          },
+        });
+
         return successResponse({ requestId: params.id, userId: req.user_id, userCode: finalCode }, 'Role request approved & account activated');
       } catch (error) {
         set.status = 500;
@@ -234,6 +278,20 @@ export const approvalsRoutes = new Elysia({ prefix: '/approvals' })
             reviewer_id: user.id,
             reviewed_at: new Date(),
             review_note: reason,
+          },
+          include: { roles: true },
+        });
+
+        // Create in-app notification for user
+        await prisma.notifications.create({
+          data: {
+            id: crypto.randomUUID(),
+            user_id: req.user_id,
+            kind: 'ROLE_REQUEST_REJECTED',
+            title: 'Role Request Rejected',
+            body: `Your request for role '${req.roles?.name || 'requested role'}' was rejected. Reason: ${reason}`,
+            ref_type: 'role_requests',
+            ref_id: req.id,
           },
         });
 
