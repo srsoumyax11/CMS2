@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/Button';
+import { MockBanner } from '@/components/ui/MockBanner';
 import {
   GraduationCap,
   LayoutDashboard,
@@ -12,6 +13,13 @@ import {
   Menu,
   X,
   FileCheck,
+  Wrench,
+  BookOpen,
+  CreditCard,
+  ShieldAlert,
+  Building2,
+  ShieldCheck,
+  UserCheck,
 } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
@@ -26,13 +34,21 @@ export const AppShell: React.FC = () => {
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'My Applications', path: '/request-role', icon: FileCheck },
+    { label: 'Outpass', path: '/outpass', icon: FileCheck },
+    { label: 'Complaints', path: '/complaints', icon: Wrench },
+    { label: 'Attendance', path: '/attendance', icon: BookOpen },
+    { label: 'Fees & Invoices', path: '/fees', icon: CreditCard },
+    { label: 'Emergency SOS', path: '/sos', icon: ShieldAlert },
+    { label: 'Warden Portal', path: '/warden', icon: Building2 },
+    { label: 'Admin Portal', path: '/admin', icon: ShieldCheck },
+    { label: 'Request Role', path: '/request-role', icon: UserCheck },
     { label: 'Notifications', path: '/notifications', icon: Bell },
     { label: 'Profile', path: '/profile', icon: User },
   ];
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <MockBanner />
       {/* Top Header Navigation */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">

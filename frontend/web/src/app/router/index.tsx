@@ -14,6 +14,13 @@ import { DashboardPage } from '@/features/onboarding/pages/DashboardPage';
 import { ProfilePage } from '@/features/auth/pages/ProfilePage';
 import { RequestRolePage } from '@/features/onboarding/pages/RequestRolePage';
 import { NotificationsPage } from '@/features/onboarding/pages/NotificationsPage';
+import { OutpassPage } from '@/features/outpass/pages/OutpassPage';
+import { ComplaintsPage } from '@/features/complaints/pages/ComplaintsPage';
+import { AttendancePage } from '@/features/attendance/pages/AttendancePage';
+import { FeesPage } from '@/features/fees/pages/FeesPage';
+import { SosPage } from '@/features/sos/pages/SosPage';
+import { WardenDashboardPage } from '@/features/warden/pages/WardenDashboardPage';
+import { AdminDashboardPage } from '@/features/admin/pages/AdminDashboardPage';
 import { BlockedPage } from '@/pages/BlockedPage';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { GraduationCap } from 'lucide-react';
@@ -102,6 +109,13 @@ export const AppRouter: React.FC = () => {
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/outpass" element={<OutpassPage />} />
+            <Route path="/complaints" element={<ComplaintsPage />} />
+            <Route path="/attendance" element={<AttendancePage />} />
+            <Route path="/fees" element={<FeesPage />} />
+            <Route path="/sos" element={<SosPage />} />
+            <Route path="/warden" element={<WardenDashboardPage />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/request-role" element={<RequestRolePage />} />
             <Route path="/notifications" element={<NotificationsPage />} />

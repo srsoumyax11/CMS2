@@ -1,5 +1,6 @@
 import { apiClient, createIdempotencyKey } from '@/lib/apiClient';
 import { UserProfile } from '@/lib/auth';
+import { env } from '@/config/env';
 
 export interface AuthResponse {
   accessToken?: string;
@@ -28,9 +29,10 @@ export const authApi = {
   },
 
   verify2fa: async (ticket2fa: string, code: string, isBackupCode?: boolean): Promise<AuthResponse> => {
-    return apiClient<AuthResponse>('/api/v1/auth/2fa/verify', {
+    const endpoint = isBackupCode ? '/api/v1/auth/backup-code/verify' : '/api/v1/auth/2fa/verify';
+    return apiClient<AuthResponse>(endpoint, {
       method: 'POST',
-      body: JSON.stringify({ ticket2fa, code, isBackupCode }),
+      body: JSON.stringify({ ticket2fa, code }),
       idempotencyKey: createIdempotencyKey(),
     });
   },
@@ -44,7 +46,7 @@ export const authApi = {
   },
 
   verifyOtp: async (email: string, code: string): Promise<AuthResponse> => {
-    return apiClient<AuthResponse>('/api/v1/auth/verify-otp', {
+    return apiClient<AuthResponse>('/api/v1/auth/otp/verify', {
       method: 'POST',
       body: JSON.stringify({ email, code }),
       idempotencyKey: createIdempotencyKey(),
@@ -52,7 +54,7 @@ export const authApi = {
   },
 
   resendOtp: async (email: string): Promise<{ resendCooldownSec: number }> => {
-    return apiClient<{ resendCooldownSec: number }>('/api/v1/auth/resend-otp', {
+    return apiClient<{ resendCooldownSec: number }>('/api/v1/auth/otp/send', {
       method: 'POST',
       body: JSON.stringify({ email }),
       idempotencyKey: createIdempotencyKey(),
@@ -60,7 +62,7 @@ export const authApi = {
   },
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean }> => {
-    return apiClient<{ success: boolean }>('/api/v1/auth/change-password', {
+    return apiClient<{ success: boolean }>('/api/v1/auth/password/reset', {
       method: 'POST',
       body: JSON.stringify({ currentPassword, newPassword }),
       idempotencyKey: createIdempotencyKey(),
@@ -68,16 +70,19 @@ export const authApi = {
   },
 
   getDevices: async (): Promise<DeviceSession[]> => {
-    return apiClient<DeviceSession[]>('/api/v1/auth/devices').catch(() => [
-      {
-        id: 'dev_current',
-        deviceName: 'Web Browser (Current Session)',
-        browser: 'Chrome / Edge',
-        ipAddress: '127.0.0.1',
-        lastActive: 'Active Now',
-        isCurrent: true,
-      },
-    ]);
+    if (env.VITE_USE_MOCKS) {
+      return [
+        {
+          id: 'dev_mock_1',
+          deviceName: 'Web Browser (Mock Mode)',
+          browser: 'Chrome / Edge',
+          ipAddress: '127.0.0.1',
+          lastActive: 'Active Now',
+          isCurrent: true,
+        },
+      ];
+    }
+    return apiClient<DeviceSession[]>('/api/v1/auth/devices');
   },
 
   revokeDevice: async (deviceId: string): Promise<{ success: boolean }> => {
@@ -87,7 +92,7 @@ export const authApi = {
   },
 
   logoutAllDevices: async (): Promise<{ success: boolean }> => {
-    return apiClient<{ success: boolean }>('/api/v1/auth/devices/logout-all', {
+    return apiClient<{ success: boolean }>('/api/v1/auth/logout-all', {
       method: 'POST',
       idempotencyKey: createIdempotencyKey(),
     });

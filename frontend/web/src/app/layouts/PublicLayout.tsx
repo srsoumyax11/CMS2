@@ -1,11 +1,13 @@
 import React from 'react';
 import { Link, Outlet } from 'react-router';
 import { Button } from '@/components/ui/Button';
+import { MockBanner } from '@/components/ui/MockBanner';
 import { GraduationCap } from 'lucide-react';
 
 export const PublicLayout: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <MockBanner />
       {/* Navigation Header */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">

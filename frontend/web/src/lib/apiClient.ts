@@ -45,12 +45,14 @@ function onRefreshed(token: string | null) {
 }
 
 const NO_REFRESH_ENDPOINTS = [
+  '/api/v1/auth/otp/send',
+  '/api/v1/auth/otp/verify',
   '/api/v1/auth/login',
   '/api/v1/auth/register',
-  '/api/v1/auth/2fa/verify',
-  '/api/v1/auth/verify-otp',
-  '/api/v1/auth/refresh',
+  '/api/v1/auth/token/refresh',
   '/api/v1/auth/logout',
+  '/api/v1/auth/2fa/verify',
+  '/api/v1/auth/backup-code/verify',
 ];
 
 export async function apiClient<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
@@ -109,7 +111,7 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
         isRefreshing = true;
 
         try {
-          const refreshRes = await fetch(`${env.VITE_API_BASE_URL}/api/v1/auth/refresh`, {
+          const refreshRes = await fetch(`${env.VITE_API_BASE_URL}/api/v1/auth/token/refresh`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

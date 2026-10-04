@@ -1,5 +1,6 @@
 export const APP_CONSTANTS = {
   PAGINATION_DEFAULT_LIMIT: 20,
+  DEFAULT_PAGE_SIZE_OPTIONS: [10, 20, 50, 100],
   TOKEN_REFRESH_INTERVAL_MS: 14 * 60 * 1000, // 14 minutes
   IDEMPOTENCY_HEADER_KEY: 'x-idempotency-key',
   CLIENT_TYPE_HEADER_KEY: 'x-client',
@@ -13,4 +14,6 @@ export const APP_CONSTANTS = {
   PASSWORD_MIN_LENGTH: 8,
   EVIDENCE_MAX_SIZE_BYTES: 5 * 1024 * 1024, // 5MB
   EVIDENCE_ALLOWED_TYPES: ['image/jpeg', 'image/png', 'application/pdf'],
+  TABLE_PREFS_STORAGE_PREFIX: 'cms_table_prefs_',
+  DEBOUNCE_SEARCH_MS: 300,
 } as const;

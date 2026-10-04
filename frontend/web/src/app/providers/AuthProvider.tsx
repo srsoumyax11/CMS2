@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async function restoreSession() {
       try {
         // Try refreshing token via httpOnly cookie first
-        const refreshRes = await fetch('/api/v1/auth/refresh', {
+        const refreshRes = await fetch('/api/v1/auth/token/refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-client': 'web' },
           credentials: 'include',

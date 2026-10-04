@@ -47,7 +47,7 @@ describe('Auth Client & apiClient Tests', () => {
     }
   });
 
-  it('does NOT attempt token refresh on login or register endpoints during 401', async () => {
+  it('does NOT attempt token refresh on login or refresh endpoints during 401', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ message: 'Unauthorized' }), {
         status: 401,
@@ -61,9 +61,21 @@ describe('Auth Client & apiClient Tests', () => {
       expect(err).toBeInstanceOf(AppError);
     }
 
-    // Should only have called the login endpoint, NOT /auth/refresh
+    // Should only call login once, NO refresh call
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy.mock.calls[0][0]).toContain('/api/v1/auth/login');
+
+    fetchSpy.mockClear();
+
+    try {
+      await apiClient('/api/v1/auth/token/refresh', { method: 'POST' });
+    } catch (err) {
+      expect(err).toBeInstanceOf(AppError);
+    }
+
+    // Should only call refresh once, NO recursive refresh loop
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0][0]).toContain('/api/v1/auth/token/refresh');
   });
 
   it('executes single-flight token refresh once on 401 for protected routes', async () => {
@@ -72,7 +84,7 @@ describe('Auth Client & apiClient Tests', () => {
     let callCount = 0;
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
       const urlStr = String(url);
-      if (urlStr.includes('/api/v1/auth/refresh')) {
+      if (urlStr.includes('/api/v1/auth/token/refresh')) {
         return new Response(JSON.stringify({ accessToken: 'new_fresh_token_456' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },

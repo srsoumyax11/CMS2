@@ -4,6 +4,11 @@ const envSchema = z.object({
   VITE_API_BASE_URL: z.string().url('VITE_API_BASE_URL must be a valid URL'),
   VITE_APP_TITLE: z.string().default('Campus CMS'),
   VITE_ENABLE_ANALYTICS: z.enum(['true', 'false']).optional().default('false'),
+  VITE_USE_MOCKS: z
+    .string()
+    .optional()
+    .transform((val) => val === 'true')
+    .default(false),
 });
 
 const _env = envSchema.safeParse(import.meta.env);

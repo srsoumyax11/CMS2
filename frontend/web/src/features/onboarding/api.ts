@@ -1,4 +1,5 @@
 import { apiClient, createIdempotencyKey } from '@/lib/apiClient';
+import { env } from '@/config/env';
 
 export interface RoleApplication {
   id: string;
@@ -26,35 +27,35 @@ export interface PresignedUrlResponse {
 
 export const onboardingApi = {
   getRequestableRoles: async (): Promise<string[]> => {
-    return apiClient<string[]>('/api/v1/roles/requestable').catch(() => ['STUDENT', 'FACULTY', 'WARDEN']);
+    return apiClient<string[]>('/api/v1/roles/requestable');
   },
 
   requestStudentRole: async (data: Record<string, unknown>): Promise<{ success: boolean; id: string }> => {
-    return apiClient<{ success: boolean; id: string }>('/api/v1/roles/request/student', {
+    return apiClient<{ success: boolean; id: string }>('/api/v1/auth/role-request', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ role: 'STUDENT', ...data }),
       idempotencyKey: createIdempotencyKey(),
     });
   },
 
   requestFacultyRole: async (data: Record<string, unknown>): Promise<{ success: boolean; id: string }> => {
-    return apiClient<{ success: boolean; id: string }>('/api/v1/roles/request/faculty', {
+    return apiClient<{ success: boolean; id: string }>('/api/v1/auth/role-request', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ role: 'FACULTY', ...data }),
       idempotencyKey: createIdempotencyKey(),
     });
   },
 
   requestWardenRole: async (data: Record<string, unknown>): Promise<{ success: boolean; id: string }> => {
-    return apiClient<{ success: boolean; id: string }>('/api/v1/roles/request/warden', {
+    return apiClient<{ success: boolean; id: string }>('/api/v1/auth/role-request', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ role: 'WARDEN', ...data }),
       idempotencyKey: createIdempotencyKey(),
     });
   },
 
   linkParentAccount: async (data: Record<string, unknown>): Promise<{ success: boolean }> => {
-    return apiClient<{ success: boolean }>('/api/v1/roles/link/parent', {
+    return apiClient<{ success: boolean }>('/api/v1/parent/link/request', {
       method: 'POST',
       body: JSON.stringify(data),
       idempotencyKey: createIdempotencyKey(),
@@ -62,28 +63,31 @@ export const onboardingApi = {
   },
 
   getPresignedUploadUrl: async (filename: string, contentType: string): Promise<PresignedUrlResponse> => {
-    return apiClient<PresignedUrlResponse>('/api/v1/uploads/presigned-url', {
+    if (env.VITE_USE_MOCKS) {
+      return {
+        uploadUrl: 'http://localhost:3000/api/v1/uploads/mock-upload',
+        fileKey: `uploads/${Date.now()}_${filename}`,
+        publicUrl: `http://localhost:3000/uploads/mock_${filename}`,
+      };
+    }
+    return apiClient<PresignedUrlResponse>('/api/v1/files/upload-url', {
       method: 'POST',
       body: JSON.stringify({ filename, contentType }),
-    }).catch(() => ({
-      uploadUrl: 'http://localhost:3000/api/v1/uploads/mock-upload',
-      fileKey: `uploads/${Date.now()}_${filename}`,
-      publicUrl: `http://localhost:3000/uploads/mock_${filename}`,
-    }));
+    });
   },
 
   getMyApplications: async (): Promise<RoleApplication[]> => {
-    return apiClient<RoleApplication[]>('/api/v1/roles/my-applications').catch(() => []);
+    return apiClient<RoleApplication[]>('/api/v1/role-requests');
   },
 
   cancelApplication: async (id: string): Promise<{ success: boolean }> => {
-    return apiClient<{ success: boolean }>(`/api/v1/roles/applications/${id}/cancel`, {
+    return apiClient<{ success: boolean }>(`/api/v1/role-requests/${id}/cancel`, {
       method: 'POST',
     });
   },
 
   reapplyApplication: async (id: string, data: Record<string, unknown>): Promise<{ success: boolean }> => {
-    return apiClient<{ success: boolean }>(`/api/v1/roles/applications/${id}/reapply`, {
+    return apiClient<{ success: boolean }>(`/api/v1/role-requests/${id}`, {
       method: 'POST',
       body: JSON.stringify(data),
       idempotencyKey: createIdempotencyKey(),
@@ -91,7 +95,7 @@ export const onboardingApi = {
   },
 
   getNotifications: async (): Promise<AppNotification[]> => {
-    return apiClient<AppNotification[]>('/api/v1/notifications').catch(() => []);
+    return apiClient<AppNotification[]>('/api/v1/notifications');
   },
 
   markNotificationRead: async (id: string): Promise<{ success: boolean }> => {
