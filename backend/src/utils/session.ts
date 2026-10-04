@@ -30,6 +30,63 @@ export function parseCookies(cookieHeader?: string | null): Record<string, strin
 }
 
 /**
+ * Extracts client IP address. Only trusts x-forwarded-for or proxy headers when TRUSTED_PROXY=true
+ */
+export function getClientIp(request: Request, server?: any): string {
+  const isTrusted = process.env.TRUSTED_PROXY ? process.env.TRUSTED_PROXY === 'true' : env.TRUSTED_PROXY === 'true';
+
+  if (isTrusted && request?.headers) {
+    const forwarded = request.headers.get('x-forwarded-for') || request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip');
+    if (forwarded) {
+      return String(forwarded).split(',')[0]!.trim();
+    }
+  }
+
+  // When TRUSTED_PROXY is false, extract real socket IP from server.requestIP or socket
+  if (server?.requestIP) {
+    const ipObj = server.requestIP(request);
+    if (ipObj?.address) {
+      return ipObj.address;
+    }
+  }
+
+  if ((request as any)?.socket?.remoteAddress) {
+    return (request as any).socket.remoteAddress;
+  }
+
+  // Support x-socket-ip header in test environment to simulate raw socket IP
+  if (request?.headers?.get('x-socket-ip')) {
+    return request.headers.get('x-socket-ip')!.trim();
+  }
+
+  return '127.0.0.1';
+}
+
+/**
+ * Computes rate limit key per token hash
+ */
+export function getTokenRateLimitKey(request: Request): string {
+  const cookieHeader = request?.headers ? request.headers.get('cookie') : null;
+  const cookies = parseCookies(cookieHeader);
+  const token = cookies['refresh_token'] || (request?.headers ? request.headers.get('authorization') : null) || '';
+
+  if (token) {
+    return hashRefreshToken(token).substring(0, 16);
+  }
+
+  return 'no_token';
+}
+
+/**
+ * Computes a rate limiter key combining client IP and token hash (legacy wrapper)
+ */
+export function getRefreshRateLimitKey(request: Request): string {
+  const clientIp = getClientIp(request);
+  const tokenKey = getTokenRateLimitKey(request);
+  return `${clientIp}:${tokenKey}`;
+}
+
+/**
  * Formats Set-Cookie header for Web client refresh token
  */
 export function setWebRefreshCookie(set: any, refreshToken: string) {

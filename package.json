@@ -1,0 +1,41 @@
+{
+  "name": "campus-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "verify": "pnpm typecheck && turbo run lint --force && pnpm test && pnpm --filter @campus/i18n validate && pnpm --filter @campus/api-client contract:check && pnpm --filter @campus/ui build-storybook",
+    "api:sync": "pnpm --filter @campus/api-client api:sync",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.71.0",
+    "@typescript-eslint/parser": "^8.71.0",
+    "babel-preset-expo": "^57.0.13",
+    "eslint": "^10.12.0",
+    "expo": "^57.0.26",
+    "expo-modules-core": "^57.0.20",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.0",
+    "turbo": "^2.0.14",
+    "typescript": "^5.5.4"
+  },
+  "packageManager": "pnpm@9.7.0",
+  "pnpm": {
+    "overrides": {
+      "react": "19.2.3",
+      "react-dom": "19.2.3",
+      "react-native": "0.86.3"
+    },
+    "packageExtensions": {
+      "@tanstack/react-query": {
+        "peerDependencies": {
+          "react": "19.2.3"
+        }
+      }
+    }
+  }
+}

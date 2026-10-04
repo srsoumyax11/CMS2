@@ -1,0 +1,45 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "ignoreDeprecations": "6.0",
+    "types": [
+      "jest",
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@campus/features": [
+        "../../packages/features/src"
+      ],
+      "@campus/ui": [
+        "../../packages/ui/src"
+      ],
+      "@campus/api-client": [
+        "../../packages/api-client/src"
+      ],
+      "@campus/config": [
+        "../../packages/config/src"
+      ],
+      "@campus/i18n": [
+        "../../packages/i18n/src"
+      ],
+      "@campus/design-tokens": [
+        "../../packages/design-tokens/src"
+      ],
+      "@campus/logger": [
+        "../../packages/logger/src"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../../packages/**/*.ts",
+    "../../packages/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "tests/e2e"
+  ]
+}

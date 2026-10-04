@@ -1,21 +1,46 @@
-## 📱 Universal Cross-Platform Frontend (Web, iOS, Android)
-- [x] React Native + Expo SDK 57 Setup
-- [x] Expo Router File-Based Navigation (`app/` layout, tabs, auth, student, warden, faculty, parent, admin, 404, html)
-- [x] Web Platform Bundling & HTML Export (Metro bundler)
-- [x] iOS Platform Support (bundleIdentifier & tablet ready)
-- [x] Android Platform Support (adaptive icons & gesture config)
-- [x] Frontend Base Cleanup & Reset (Clean base structure for Flat Design rewrite per `design.md`)
-- [x] Design Tokens System Architecture (`frontend/src/theme/tokens.ts` with 4-6 solid colors, 0 shadows, 0 gradients, flat 2D borders)
-- [x] Master Senior UI/UX Detailed Frontend Plan & Edge Case Checklist (`frontend_plan.md`)
-- [x] Phase 1: Authentication & Onboarding Flow (`app/(auth)/` - Landing Page, Login, 3-step Register Wizard, Role Selection, Parent Link)
-- [x] Phase 2: Shared Shell, Navigation & Platform Utilities (`app/(tabs)/` - Universal Header, Persona Switcher, Notifications, SOS Floating Button, Dynamic QR Presenter/Scanner)
-- [x] Phase 3: Student Experience Portal (`app/(student)/` - Dashboard, Timetable, Attendance, Outpass Pass, Fees, Library Catalog, Hostel Room & Mess, Campus Clubs & Placements, Digital Rotatable ID Card)
-- [x] Phase 4: Warden Operations Console (`app/(warden)/` - Warden Console Dashboard, Outpass Approval Inbox, Emergency SOS Control Room, Hostel Room Allocator, Night Roll Call & Visitor Gate Log)
-- [x] Phase 5: Faculty Academic Workspace (`app/(faculty)/` - Faculty Dashboard, Live Rotating QR Attendance Launcher, Course Assignments & Rubric Grading, Attendance Dispute Resolution, Mentee Progress Tracking)
-- [x] Phase 6: Parent Guardian Portal (`app/(parent)/` - Multi-Child Dashboard Switcher, Parent Outpass Authorization Inbox, Child Fee Invoices & Payment Gateway, Safety Alerts Feed)
-- [x] Phase 7: Administration & Governance Suite (`app/(admin)/` - User Directory & Account Governance, Self-Signup Role Approval Queue, Academic Hierarchy & Location Tree, System Compliance & Audit Logs)
+## 📱 Universal Cross-Platform Frontend Architecture & Modular Monorepo (Expo SDK 56+ / Latest)
+
+### Milestone 1: Monorepo Scaffolding & Core System Packages (Tasks 1.1 - 1.4)
+- [x] Task 1.1: Monorepo & Turborepo configuration (`pnpm-workspace.yaml`, `turbo.json`, root `package.json`, root `tsconfig.json`)
+- [x] Task 1.2: Design Tokens System Package (`packages/design-tokens` — palette, spacing, typography, radius, light/dark themes)
+- [x] Task 1.3: Sensitive-Data-Redacting Logger Package (`packages/logger` — debug, info, warn, error wrappers with OTP/token sanitization)
+- [x] Task 1.4: Application Configuration Package (`packages/config` — `appConfig`, permissions matrix, feature flags)
+- [x] Task 1.5: Internationalization Package (`packages/i18n` — English, Hindi, Odia translations & validation script)
+- [x] Task 1.6: Type-Safe API Client & Query Hooks Package (`packages/api-client` — single-flight refresh, GET retries, AppError mapping, TokenStore)
+- [x] Task 1.7: Reusable Presentational UI Primitives Package (`packages/ui` — Button, Input, Card, Sheet, Timeline, DataList with tokens, a11y labels, 44px targets)
+- [x] Task 1.8: Storybook Integration for UI Components (`packages/ui` on web via `react-native-web`)
+- [x] Task 1.9: Quality Gates & CI Scripts (ESLint 9 flat config, Prettier, TypeScript strict check, Vitest / Jest, GitHub Actions CI `.github/workflows/ci.yml`)
+
+### Pre-Milestone 2 Batch 2 Fixes & System Alignment
+- [x] Fix 1: Declare peerDependencies for react, react-native, react-dom in packages/ui and packages/features; update .npmrc with node-linker=hoisted; re-run npx expo-doctor (20/21 checks, duplicate subdependencies explained)
+- [x] Fix 2: Verify npx expo start --web and add Playwright web login smoke test
+- [x] Fix 3: Update CI workflow with PostgreSQL service container, DB_URL env, and api:sync contract validation
+- [x] Fix 4: Verify workspace package count (8 total packages: apps/app + 7 packages under packages/)
+- [x] Fix 5: Add automated test asserting every api-client endpoint function has a contract check entry
+
+### Milestone 2 Batch 2: Real Auth & Onboarding Screens
+- [x] Screen 1: Register Flow (phone/email, OTP verification, resend cooldown, HTTP 429 Retry-After header handling)
+- [x] Screen 2: Login Flow (identity + password, 2FA challenge OTP step, backup code fallback, odd login alert display)
+- [x] Screen 3: Onboarding & Role Request Flow (status check, backend-driven role list, claimed code, department/hostel, signed URL evidence upload with progress & retry, parent link form)
+- [x] Screen 4: Request Status Flow (pending, needs_info with inline upload, approved, rejected with audit reason, cancelled using shared StatusTimeline)
+- [x] Screen 5: Post-Approval Role Switcher & Settings (active role switcher with /me/active-role, permission refresh, profile details, language switcher [en, hi, or], active devices list & device logout)
+- [x] Security & UX: Loading/Empty/Error state handling with requestId, double-submit protection (idempotency key & disabled button), 0 logging of sensitive tokens/passwords/OTPs
+- [x] Automated Testing: Route guard tests, React Hook Form validation tests, Playwright end-to-end flow test (register -> OTP -> onboarding -> role request -> pending)
+- [x] Verification & Docs: Run pnpm verify (show last 30 lines) & update PROGRESS.md
+
+### Milestone 3: Shared Engine
+- [x] Config-driven role navigation: menu items per role in packages/config, rendered by ResponsiveShell (bottom tabs on phone, side nav on wide screens).
+- [x] Role dashboards: cards come from config (title, icon, route, permission). Shows only cards the user can access.
+- [x] FormRenderer: builds form from field config (text, select, date, file, textarea) with Zod validation.
+- [x] RequestCard & RequestList: reusable list item and status timeline for outpass, complaints, leave, role requests.
+- [x] ApprovalInbox: list pending items, approve and reject with reason modal, bulk selection.
+- [x] Notices feed & notifications inbox (read status, pull to refresh, polling interval from appConfig).
+- [x] SosButton: prominent SOS button, confirm modal, location payload dispatch, offline retry, fallback emergency contacts.
+- [x] Offline queue: persistent queue for attendance, check-in, and SOS retry with sync badge indicator.
 
 ---
+
+
 
 # Campus Management System - Production Backend Implementation Plan
 
@@ -394,6 +419,83 @@
 - [x] **2. Production Health & Log Audit**:
   - [x] Verify correlation IDs (`x-request-id`) in all structured log lines and HTTP responses
   - [x] Execute pre-flight deployment check and verify production readiness
+
+---
+
+## ⚡ Phase 20: Real-Time WebSockets & Backend Gaps Resolution (Completed)
+- [x] **1. In-Memory Real-Time PubSub Engine (`GAP-001/002`)**:
+  - [x] Implement central event emitter (`src/utils/pubsub.ts`) for real-time telemetry streaming and emergency SOS alerts
+- [x] **2. Driver Telemetry WebSocket Endpoint (`GAP-001`)**:
+  - [x] Implement native ElysiaJS WebSocket route `.ws('/driver/vehicles/:id/location')` in `src/routes/transport_placements.ts`
+- [x] **3. Warden Live SOS Notification WebSocket (`GAP-002`)**:
+  - [x] Implement native ElysiaJS WebSocket route `.ws('/warden/sos/stream')` in `src/routes/warden.ts` and dispatch `sos.triggered` events
+- [x] **4. Anonymous Safety & Disciplinary Reporting (`GAP-003`)**:
+  - [x] Implement `POST /api/v1/safety/reports/anonymous` in `src/routes/finance_health.ts` for anonymous reporting without user ID tracing
+- [x] **5. Integration Testing & Verification**:
+  - [x] Write integration test suite `tests/integration/realtime_gaps.test.ts` to verify WebSockets & Anonymous reporting
+---
+
+## 🔒 Phase 21: Web Refresh Cookie, Token Rotation & Security Hardening (Completed)
+- [x] **1. Environment Schema & Security Flags (`src/config/env.ts`, `.env.example`, `.env`)**:
+  - [x] Add `ENABLE_SWAGGER`, `EXPOSE_RAW_ERRORS`, `COOKIE_SECURE`, `COOKIE_SAMESITE`, `COOKIE_DOMAIN`, `CORS_ORIGINS` to Zod schema
+  - [x] Implement production safety override for `EXPOSE_RAW_ERRORS` & log warning if true in production
+- [x] **2. Auth Sessions & Cookie Utility (`src/utils/session.ts`)**:
+  - [x] Implement `hashRefreshToken` for token hashing
+  - [x] Implement `setWebRefreshCookie` and `clearWebRefreshCookie` formatting HttpOnly, Secure, SameSite, Max-Age
+- [x] **3. Web Refresh Cookie & Token Rotation in Auth Routes (`src/routes/auth.ts`)**:
+  - [x] Update `POST /auth/login`, `POST /2fa/verify`, `POST /register`, `POST /backup-code/verify` to detect `x-client: web`
+  - [x] For Web: Set HttpOnly cookie, omit `refreshToken` in JSON body
+  - [x] For Mobile: Keep `refreshToken` in JSON body (unchanged)
+  - [x] Implement Token Rotation & Reuse Detection in `POST /auth/token/refresh` using `auth_sessions` table
+  - [x] Revoke all user sessions on token reuse detection and log audit event
+  - [x] Update `POST /auth/logout` to clear cookie and revoke session
+- [x] **4. CORS, CSRF & Swagger Toggles (`src/index.ts`)**:
+  - [x] Configure `@elysiajs/cors` with `CORS_ORIGINS` array and `credentials: true`
+  - [x] Conditionally mount `/swagger` based on `ENABLE_SWAGGER` (returns 404 when false)
+- [x] **5. Automated Testing & Contract Verification (`tests/auth_cookies_security.test.ts`)**:
+  - [x] Write integration test suite verifying Web vs Mobile token responses, rotation, reuse detection, CSRF checks, and Swagger toggle
+  - [x] Verify `bunx tsc --noEmit` (0 errors) and `bun test` (100% passing)
+
+---
+
+## 🛡️ Phase 22: Pre-Launch Hardening & Security Verification
+- [x] **1. Client IP Extraction (`SEC-IP-001`)**:
+  - Use `server.requestIP(request)` when `TRUSTED_PROXY=false`, falling back to socket/test headers instead of hardcoded 127.0.0.1 outside tests.
+  - Add test confirming two separate socket IPs map to separate rate limit buckets.
+- [x] **2. Configurable Refresh Rate Limits & Multi-Instance Architecture (`SEC-RL-002`)**:
+  - Add `REFRESH_IP_LIMIT`, `REFRESH_IP_WINDOW_SECONDS`, `REFRESH_TOKEN_LIMIT`, `REFRESH_TOKEN_WINDOW_SECONDS` to env schema.
+  - Document counter storage (process Map vs shared Redis cluster store) and implement Redis counter adapter for multi-instance scalability.
+- [x] **3. Production Flags & Startup Guards (`SEC-ENV-003`)**:
+  - Enforce `ENABLE_SWAGGER=false` default and force `EXPOSE_RAW_ERRORS=false` when `NODE_ENV=production`.
+  - Add startup test verifying flag behavior under production environment settings.
+- [x] **4. Anonymous Report & Status Tracking (`SEC-ANON-004`)**:
+  - Implement `POST /safety/reports/anonymous` generating tracking token, hashing token with SHA-256 for `anonymous_reports`, without storing reporter ID or logging user ID.
+  - Implement `GET /safety/reports/anonymous/:token` status check endpoint.
+  - Add tests confirming no table links the report to a user identity.
+- [x] **5. Rate Limits Across Core Endpoints (`SEC-RL-005`)**:
+  - Apply rate limiters on `/auth/login` (10/15m), `/auth/otp/send` (5/15m), `/auth/otp/verify` & `/auth/2fa/verify` (10/15m), `/auth/register` (5/15m), `/onboarding/role-requests` (5/15m), and `/guardian-links` / `/parent/link/request` (5/15m).
+  - Add tests verifying HTTP 429 and Retry-After headers for each route.
+- [x] **6. Payments Gateway Security & Idempotency (`SEC-PAY-006`)**:
+  - Implement HMAC-SHA256 signature verification on `POST /webhooks/payment`.
+  - Implement duplicate webhook event deduplication via `gateway_events` and ignore already-processed transactions.
+  - Support `Idempotency-Key` on payment creation. Write tests.
+- [x] **7. SOS System Hardening & Escalation (`SEC-SOS-007`)**:
+  - Make SOS creation idempotent via `idempotency_key`.
+  - Support `source: 'roommate'` on behalf of victim student.
+  - Load escalation targets dynamically ordered by `step_no` from `sos_escalation_steps`. Write tests.
+- [x] **8. Permission Scope Boundaries & IDOR Prevention (`SEC-IDOR-008`)**:
+  - Enforce student isolation for outpasses, invoices, and marks.
+  - Enforce warden hostel scope for non-assigned hostels.
+  - Enforce parent-child scope for unlinked children.
+  - Add dedicated IDOR test suite covering all 5 cases.
+- [x] **9. Audit Logging Verification (`SEC-AUDIT-009`)**:
+  - Enforce append-only audit log entries for: role grant, approval decisions, refunds, waivers, mark changes, account freeze/unfreeze, and entity restore.
+  - Add tests verifying audit log creation for each action.
+- [x] **10. Full Build, Type & Database Verification (`SEC-VERIFY-010`)**:
+  - Run `bun test` and `bunx tsc --noEmit`.
+  - Confirm `bunx prisma migrate deploy` applies cleanly on an empty database.
+
+
 
 
 

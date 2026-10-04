@@ -128,6 +128,8 @@ CREATE TABLE auth_sessions (
   ip_address inet,
   expires_at timestamptz NOT NULL,
   revoked_at timestamptz,
+  rotated_at timestamptz,
+  grace_used_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE backup_codes (

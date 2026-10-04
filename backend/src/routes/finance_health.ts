@@ -1,9 +1,119 @@
 import { Elysia, t } from 'elysia';
+import { createHash } from 'node:crypto';
 import { prisma } from '../config/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 import { jwtAuth } from '../middleware/auth';
 
 export const financeHealthRoutes = new Elysia()
+  // Public Anonymous Safety Report Endpoints (No JWT / Auth tracking required)
+  .post(
+    '/safety/reports/anonymous',
+    async ({ body, set }) => {
+      try {
+        const rawToken = `anon_tok_${crypto.randomUUID()}`;
+        const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+        const anonId = crypto.randomUUID();
+
+        const anonReportCategory = ['ragging', 'harassment', 'safety', 'faculty', 'other'].includes(body.category)
+          ? body.category
+          : 'other';
+
+        const safetyCaseCategory = ['ragging', 'harassment', 'faculty', 'discipline', 'other'].includes(body.category)
+          ? body.category
+          : 'other';
+
+        const anonReport = await prisma.anonymous_reports.create({
+          data: {
+            id: anonId,
+            token_hash: tokenHash,
+            category: anonReportCategory,
+            body: `[Anonymous Report] ${body.title}\n\nDetails: ${body.incidentDetails}${
+              body.location ? `\nLocation: ${body.location}` : ''
+            }`,
+            status: 'new',
+          },
+        });
+
+        const safetyCase = await prisma.safety_cases.create({
+          data: {
+            id: crypto.randomUUID(),
+            case_no: `ANON-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            category: safetyCaseCategory,
+            source_report_id: anonReport.id,
+            complainant_id: null,
+            status: 'open',
+            summary: body.title,
+          },
+        });
+
+        return successResponse(
+          {
+            trackingToken: rawToken,
+            caseNo: safetyCase.case_no,
+            category: anonReport.category,
+            status: anonReport.status,
+            createdAt: anonReport.created_at,
+            isAnonymous: true,
+          },
+          'Anonymous safety report submitted successfully. Save your tracking token to check status.'
+        );
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('CREATE_FAILED', error instanceof Error ? error.message : 'Failed to submit anonymous report');
+      }
+    },
+    {
+      body: t.Object({
+        title: t.String({ minLength: 3 }),
+        category: t.String(),
+        incidentDetails: t.String({ minLength: 10 }),
+        location: t.Optional(t.String()),
+        evidenceUrl: t.Optional(t.String()),
+      }),
+      detail: { tags: ['Safety & Health'], summary: 'Submit an anonymous safety report' },
+    }
+  )
+
+  .get(
+    '/safety/reports/anonymous/:token',
+    async ({ params, set }) => {
+      try {
+        const rawToken = params.token;
+        const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+
+        const report = await prisma.anonymous_reports.findUnique({
+          where: { token_hash: tokenHash },
+          include: { safety_cases: true },
+        });
+
+        if (!report) {
+          set.status = 404;
+          return errorResponse('REPORT_NOT_FOUND', 'Invalid tracking token or report not found');
+        }
+
+        const linkedCase = report.safety_cases[0];
+
+        return successResponse(
+          {
+            category: report.category,
+            status: report.status,
+            caseNo: linkedCase?.case_no || null,
+            caseStatus: linkedCase?.status || report.status,
+            createdAt: report.created_at,
+          },
+          'Anonymous report status retrieved successfully'
+        );
+      } catch (error) {
+        set.status = 500;
+        return errorResponse('FETCH_FAILED', 'Failed to fetch report status');
+      }
+    },
+    {
+      params: t.Object({ token: t.String() }),
+      detail: { tags: ['Safety & Health'], summary: 'Check status of anonymous report by tracking token' },
+    }
+  )
+
   .use(jwtAuth)
 
   // -------------------------------------------------------------
@@ -206,44 +316,6 @@ export const financeHealthRoutes = new Elysia()
   }, {
     body: t.Object({ title: t.String(), category: t.String() }),
     detail: { tags: ['Safety & Health'], summary: 'Open a safety case' },
-  })
-
-  .post('/safety/reports/anonymous', async ({ body, set }) => {
-    try {
-      const report = await prisma.safety_cases.create({
-        data: {
-          id: crypto.randomUUID(),
-          case_no: `ANON-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          category: ['ragging', 'harassment', 'faculty', 'discipline', 'other'].includes(body.category) ? body.category : 'other',
-          summary: `[Anonymous Report] ${body.title}\n\nDetails: ${body.incidentDetails}${body.location ? `\nLocation: ${body.location}` : ''}`,
-          complainant_id: null,
-          status: 'open',
-        },
-      });
-
-      return successResponse(
-        {
-          caseNo: report.case_no,
-          category: report.category,
-          status: report.status,
-          createdAt: report.created_at,
-          isAnonymous: true,
-        },
-        'Anonymous safety report submitted successfully. Your identity is completely protected.'
-      );
-    } catch (error) {
-      set.status = 500;
-      return errorResponse('CREATE_FAILED', error instanceof Error ? error.message : 'Failed to submit anonymous report');
-    }
-  }, {
-    body: t.Object({
-      title: t.String({ minLength: 3 }),
-      category: t.String(),
-      incidentDetails: t.String({ minLength: 10 }),
-      location: t.Optional(t.String()),
-      evidenceUrl: t.Optional(t.String()),
-    }),
-    detail: { tags: ['Safety & Health'], summary: 'Submit an anonymous safety or disciplinary report' },
   })
 
   .get('/counselling/slots', async ({ set }) => {

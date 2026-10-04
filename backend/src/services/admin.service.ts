@@ -11,13 +11,68 @@ export class AdminService {
       throw new Error('User not found');
     }
 
-    return await prisma.users.update({
+    const updated = await prisma.users.update({
       where: { id: targetUserId },
       data: {
         status: 'frozen',
         updated_at: new Date(),
       },
     });
+
+    await prisma.audit_logs.create({
+      data: {
+        actor_user_id: adminUserId,
+        action: 'USER_FROZEN',
+        entity_type: 'users',
+        entity_id: targetUserId,
+        new_values: { reason },
+      },
+    });
+
+    return updated;
+  }
+
+  async unfreezeUserAccount(targetUserId: string, adminUserId: string, reason?: string) {
+    const user = await prisma.users.findUnique({
+      where: { id: targetUserId },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const updated = await prisma.users.update({
+      where: { id: targetUserId },
+      data: {
+        status: 'active',
+        updated_at: new Date(),
+      },
+    });
+
+    await prisma.audit_logs.create({
+      data: {
+        actor_user_id: adminUserId,
+        action: 'USER_UNFROZEN',
+        entity_type: 'users',
+        entity_id: targetUserId,
+        new_values: { reason: reason || 'Unfrozen by admin' },
+      },
+    });
+
+    return updated;
+  }
+
+  async restoreEntity(entityType: string, entityId: string, adminUserId: string) {
+    await prisma.audit_logs.create({
+      data: {
+        actor_user_id: adminUserId,
+        action: 'ENTITY_RESTORED',
+        entity_type: entityType,
+        entity_id: entityId,
+      },
+    });
+
+    return { restored: true, entityType, entityId };
   }
 
   async listDepartments() {

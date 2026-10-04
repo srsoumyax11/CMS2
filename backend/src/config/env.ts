@@ -36,21 +36,28 @@ const envSchema = z.object({
   COOKIE_SECURE: z.preprocess((v) => toLowerBool(v, process.env.NODE_ENV === 'production' ? 'true' : 'false'), z.enum(['true', 'false'])).default('false'),
   COOKIE_SAMESITE: z.preprocess((v) => (typeof v === 'string' ? v.trim().toLowerCase() : 'strict'), z.enum(['lax', 'strict', 'none'])).default('strict'),
   COOKIE_DOMAIN: z.string().optional(),
+  REFRESH_REUSE_GRACE_SECONDS: z.coerce.number().default(15),
+  TRUSTED_PROXY: z.preprocess((v) => toLowerBool(v, 'false'), z.enum(['true', 'false'])).default('false'),
+  REFRESH_IP_LIMIT: z.coerce.number().default(300),
+  REFRESH_IP_WINDOW_SECONDS: z.coerce.number().default(900),
+  REFRESH_TOKEN_LIMIT: z.coerce.number().default(20),
+  REFRESH_TOKEN_WINDOW_SECONDS: z.coerce.number().default(900),
+  WEBHOOK_SECRET: z.string().default('super_secret_webhook_key_2026'),
 });
 
 const parsedEnv = envSchema.parse(process.env);
 
 // Safety Guard: Force EXPOSE_RAW_ERRORS to false in production & log warning
-if (parsedEnv.NODE_ENV === 'production' && parsedEnv.EXPOSE_RAW_ERRORS === 'true') {
-  logger.warn({
-    message: '[Security Warning] EXPOSE_RAW_ERRORS=true is prohibited in production. Forcing EXPOSE_RAW_ERRORS to false.',
-  });
-  (parsedEnv as any).EXPOSE_RAW_ERRORS = 'false';
-}
-
-// Safety Guard: Force ENABLE_SWAGGER default to false in production if not explicitly enabled
-if (parsedEnv.NODE_ENV === 'production' && process.env.ENABLE_SWAGGER === undefined) {
-  (parsedEnv as any).ENABLE_SWAGGER = 'false';
+if (parsedEnv.NODE_ENV === 'production') {
+  if (parsedEnv.EXPOSE_RAW_ERRORS === 'true') {
+    logger.warn({
+      message: '[Security Warning] EXPOSE_RAW_ERRORS=true is prohibited in production. Forcing EXPOSE_RAW_ERRORS to false.',
+    });
+    (parsedEnv as any).EXPOSE_RAW_ERRORS = 'false';
+  }
+  if (process.env.ENABLE_SWAGGER === undefined) {
+    (parsedEnv as any).ENABLE_SWAGGER = 'false';
+  }
 }
 
 export const env = parsedEnv;

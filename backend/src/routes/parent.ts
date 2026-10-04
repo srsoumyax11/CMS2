@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia';
 import { prisma } from '../config/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 import { jwtAuth } from '../middleware/auth';
+import { createRateLimiter } from '../middleware/rate-limit';
 
 export const parentRoutes = new Elysia({ prefix: '/parent' })
   .use(jwtAuth)
@@ -56,6 +57,7 @@ export const parentRoutes = new Elysia({ prefix: '/parent' })
       }
     },
     {
+      beforeHandle: createRateLimiter(15 * 60 * 1000, 5, 'guardian_link_create'),
       body: t.Object({
         admissionNo: t.String(),
         dateOfBirth: t.String({ description: 'YYYY-MM-DD' }),
@@ -246,9 +248,28 @@ export const parentRoutes = new Elysia({ prefix: '/parent' })
    */
   .post(
     '/payments/initiate',
-    async ({ user, body, set }) => {
+    async ({ user, body, set, request }) => {
       try {
-        const { studentId, amount, method } = body;
+        const { studentId, amount, method, idempotencyKey } = body;
+        const key = request.headers.get('idempotency-key') || idempotencyKey || `pay_${user!.id}_${Date.now()}`;
+
+        // Idempotency check: return existing transaction if matching key exists
+        const existing = await prisma.payments.findFirst({
+          where: { idempotency_key: key },
+        });
+
+        if (existing) {
+          return successResponse(
+            {
+              paymentId: existing.id,
+              amount: existing.amount,
+              status: existing.status,
+              gatewayTxnUrl: `https://gateway.campus.edu/pay/${existing.id}`,
+              isIdempotentReplay: true,
+            },
+            'Fee payment already initiated (Idempotent response)'
+          );
+        }
 
         const payment = await prisma.payments.create({
           data: {
@@ -258,7 +279,7 @@ export const parentRoutes = new Elysia({ prefix: '/parent' })
             amount: Number(amount),
             method: method || 'upi',
             status: 'initiated',
-            idempotency_key: `pay_${user!.id}_${Date.now()}`,
+            idempotency_key: key,
           },
         });
 
@@ -281,6 +302,7 @@ export const parentRoutes = new Elysia({ prefix: '/parent' })
         studentId: t.String({ format: 'uuid' }),
         amount: t.Number({ minimum: 1 }),
         method: t.Optional(t.String()),
+        idempotencyKey: t.Optional(t.String()),
       }),
       detail: {
         tags: ['Parent'],

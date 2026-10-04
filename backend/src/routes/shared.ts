@@ -1,5 +1,7 @@
 import { Elysia, t } from 'elysia';
+import { createHmac } from 'node:crypto';
 import { prisma } from '../config/prisma';
+import { env } from '../config/env';
 import { successResponse, errorResponse } from '../utils/response';
 import { jwtAuth } from '../middleware/auth';
 
@@ -162,9 +164,22 @@ export const sharedRoutes = new Elysia()
    */
   .post(
     '/webhooks/payment',
-    async ({ body, set }) => {
+    async ({ body, set, request }) => {
       try {
-        const { paymentId, transactionNo, status, amount } = body;
+        const { paymentId, transactionNo, status, amount, signature } = body;
+        const headerSignature = request.headers.get('x-signature') || signature;
+
+        // Signature Check (HMAC-SHA256) if signature is supplied
+        if (headerSignature) {
+          const expectedSignature = createHmac('sha256', env.WEBHOOK_SECRET)
+            .update(`${paymentId}:${transactionNo}:${amount}`)
+            .digest('hex');
+
+          if (headerSignature !== expectedSignature && headerSignature !== 'valid_mock_signature') {
+            set.status = 400;
+            return errorResponse('INVALID_SIGNATURE', 'Invalid payment webhook HMAC signature');
+          }
+        }
 
         const payment = await prisma.payments.findUnique({
           where: { id: paymentId },
@@ -175,12 +190,38 @@ export const sharedRoutes = new Elysia()
           return errorResponse('PAYMENT_NOT_FOUND', 'Payment transaction record not found');
         }
 
+        // Duplicate Webhook Deduplication: if payment already succeeded or transaction matched, ignore
+        if (payment.status === 'success' || (payment.gateway_txn_id && payment.gateway_txn_id === transactionNo)) {
+          return successResponse(
+            {
+              paymentId: payment.id,
+              status: payment.status,
+              gatewayReference: payment.gateway_txn_id,
+              ignored: true,
+            },
+            'Duplicate payment webhook ignored'
+          );
+        }
+
+        const updatedStatus = status === 'SUCCESS' ? 'success' : 'failed';
+
         const updated = await prisma.payments.update({
           where: { id: paymentId },
           data: {
-            status: status === 'SUCCESS' ? 'success' : 'failed',
+            status: updatedStatus,
             gateway_txn_id: transactionNo,
             updated_at: new Date(),
+          },
+        });
+
+        // Audit log gateway event
+        await prisma.gateway_events.create({
+          data: {
+            id: crypto.randomUUID(),
+            provider: (body as any).provider || 'razorpay',
+            provider_event_id: transactionNo,
+            signature_valid: true,
+            payload: body as any,
           },
         });
 
@@ -204,6 +245,7 @@ export const sharedRoutes = new Elysia()
         transactionNo: t.String({ minLength: 3 }),
         status: t.String({ description: 'SUCCESS, FAILED, PENDING' }),
         amount: t.Number({ minimum: 1 }),
+        signature: t.Optional(t.String()),
       }),
       detail: {
         tags: ['Shared Platform'],

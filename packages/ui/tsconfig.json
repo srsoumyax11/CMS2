@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "../../",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@campus/config": ["../config/src"],
+      "@campus/design-tokens": ["../design-tokens/src"],
+      "@campus/api-client": ["../api-client/src"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "../config/src/**/*",
+    "../design-tokens/src/**/*",
+    "../api-client/src/**/*"
+  ]
+}

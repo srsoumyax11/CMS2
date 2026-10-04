@@ -138,7 +138,7 @@ describe('Integration Test Suite: Real-Time WebSockets & Backend Gaps Resolution
           },
           body: JSON.stringify({
             title: 'Unsafe Hazard Near Library',
-            category: 'discipline',
+            category: 'safety',
             incidentDetails: 'Broken electrical cable hanging near main staircase entrance.',
             location: 'Main Library Block B',
           }),
@@ -150,7 +150,7 @@ describe('Integration Test Suite: Real-Time WebSockets & Backend Gaps Resolution
       expect(body.success).toBe(true);
       expect(body.data.isAnonymous).toBe(true);
       expect(body.data.caseNo).toContain('ANON-');
-      expect(body.data.category).toBe('discipline');
+      expect(body.data.category).toBe('safety');
     });
   });
 });

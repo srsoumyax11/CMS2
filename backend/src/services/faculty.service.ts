@@ -107,7 +107,7 @@ export class FacultyService {
       throw new Error('Assignment submission not found');
     }
 
-    return await prisma.assignment_submissions.update({
+    const updated = await prisma.assignment_submissions.update({
       where: { id: submissionId },
       data: {
         marks: marksObtained,
@@ -116,6 +116,18 @@ export class FacultyService {
         graded_at: new Date(),
       },
     });
+
+    await prisma.audit_logs.create({
+      data: {
+        actor_user_id: facultyUserId,
+        action: 'MARK_CHANGED',
+        entity_type: 'assignment_submissions',
+        entity_id: submissionId,
+        new_values: { marks: marksObtained },
+      },
+    });
+
+    return updated;
   }
 }
 

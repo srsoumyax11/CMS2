@@ -12,11 +12,13 @@ import {
   setWebRefreshCookie,
   clearWebRefreshCookie,
   issueAuthSession,
+  getClientIp,
+  getTokenRateLimitKey,
+  getRefreshRateLimitKey,
 } from '../utils/session';
 
 export const authRoutes = new Elysia({ prefix: '/auth' })
   .use(jwtAuth)
-  .use(createRateLimiter(15 * 60 * 1000, 10, 'auth_login'))
   /**
    * POST /api/v1/auth/login
    * Login with userCode (or email/phone) and password
@@ -122,6 +124,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       }
     },
     {
+      beforeHandle: createRateLimiter(15 * 60 * 1000, 10, 'auth_login'),
       body: t.Object({
         identity: t.String({ description: 'User Code, Email, or Phone Number' }),
         password: t.String({ minLength: 6 }),
@@ -219,6 +222,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       }
     },
     {
+      beforeHandle: createRateLimiter(15 * 60 * 1000, 10, 'auth_2fa_verify'),
       body: t.Object({
         otpId: t.String({ format: 'uuid' }),
         code: t.String({ minLength: 6, maxLength: 6 }),
@@ -361,6 +365,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       }
     },
     {
+      beforeHandle: createRateLimiter(15 * 60 * 1000, 5, 'auth_otp_send'),
       body: t.Object({
         target: t.String({ description: 'Email address or Phone number' }),
         channel: t.Union([t.Literal('sms'), t.Literal('email')]),
@@ -429,6 +434,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       }
     },
     {
+      beforeHandle: createRateLimiter(15 * 60 * 1000, 10, 'auth_otp_verify'),
       body: t.Object({
         otpId: t.String({ format: 'uuid' }),
         code: t.String({ minLength: 6, maxLength: 6 }),
@@ -446,31 +452,40 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
    */
   .post(
     '/logout',
-    async ({ user, set, request }) => {
-      const isWebClient = request.headers.get('x-client')?.toLowerCase() === 'web';
-      const cookieHeader = request.headers.get('cookie');
+    async ({ user, set, request, body }) => {
+      const isWebClient = request?.headers ? request.headers.get('x-client')?.toLowerCase() === 'web' : false;
+      const cookieHeader = request?.headers ? request.headers.get('cookie') : null;
       const cookies = parseCookies(cookieHeader);
       const cookieToken = cookies['refresh_token'];
+      const bodyToken = (body as any)?.refreshToken;
+      const tokenToRevoke = cookieToken || bodyToken;
 
-      if (!user && !cookieToken) {
+      if (!user && !tokenToRevoke) {
         set.status = 401;
         return errorResponse('UNAUTHORIZED', 'Missing or invalid token');
       }
 
-      if (cookieToken) {
-        const tokenHash = hashRefreshToken(cookieToken);
+      if (tokenToRevoke) {
+        const tokenHash = hashRefreshToken(tokenToRevoke);
         await prisma.auth_sessions.updateMany({
           where: { refresh_token_hash: tokenHash, revoked_at: null },
-          data: { revoked_at: new Date() },
+          data: { revoked_at: new Date() }, // rotated_at remains null for logout revocation!
         });
+      } else if (user) {
+        // Fallback: revoke user's single most recent active session
+        const latestSession = await prisma.auth_sessions.findFirst({
+          where: { user_id: user.id, revoked_at: null },
+          orderBy: { created_at: 'desc' },
+        });
+        if (latestSession) {
+          await prisma.auth_sessions.update({
+            where: { id: latestSession.id },
+            data: { revoked_at: new Date() },
+          });
+        }
       }
 
       if (user) {
-        await prisma.auth_sessions.updateMany({
-          where: { user_id: user.id, revoked_at: null },
-          data: { revoked_at: new Date() },
-        });
-
         await prisma.audit_logs.create({
           data: {
             actor_user_id: user.id,
@@ -488,9 +503,59 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       return successResponse({ userId: user?.id || null }, 'Logged out successfully');
     },
     {
+      body: t.Optional(t.Object({ refreshToken: t.Optional(t.String()) })),
       detail: {
         tags: ['Authentication'],
         summary: 'Logout current user session',
+      },
+    }
+  )
+
+  /**
+   * POST /api/v1/auth/logout-all
+   * Revoke all sessions across all devices for the current user
+   */
+  .post(
+    '/logout-all',
+    async ({ user, set, request }) => {
+      if (!user) {
+        set.status = 401;
+        return errorResponse('UNAUTHORIZED', 'Missing or invalid token');
+      }
+
+      const isWebClient = request?.headers ? request.headers.get('x-client')?.toLowerCase() === 'web' : false;
+
+      const now = new Date();
+      // Revoke ALL active sessions for this user AND close grace path on ALL sessions
+      await prisma.auth_sessions.updateMany({
+        where: { user_id: user.id, revoked_at: null },
+        data: { revoked_at: now },
+      });
+
+      await prisma.auth_sessions.updateMany({
+        where: { user_id: user.id, grace_used_at: null },
+        data: { grace_used_at: now },
+      });
+
+      await prisma.audit_logs.create({
+        data: {
+          actor_user_id: user.id,
+          action: 'USER_LOGOUT_ALL_DEVICES',
+          entity_type: 'users',
+          entity_id: user.id,
+        },
+      });
+
+      if (isWebClient) {
+        clearWebRefreshCookie(set);
+      }
+
+      return successResponse({ userId: user.id }, 'Logged out from all devices successfully');
+    },
+    {
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Revoke all sessions/devices for user',
       },
     }
   )
@@ -750,6 +815,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       }
     },
     {
+      beforeHandle: createRateLimiter(15 * 60 * 1000, 5, 'auth_register'),
       body: t.Object({
         target: t.String({ description: 'Email address or Phone number' }),
         password: t.String({ minLength: 6 }),
@@ -763,17 +829,14 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     }
   )
 
-  /**
-   * POST /api/v1/auth/token/refresh
-   * Refresh JWT access token
-   */
-  .use(createRateLimiter(15 * 60 * 1000, 20, 'auth_refresh'))
+  .use(createRateLimiter(15 * 60 * 1000, 300, 'auth_refresh_ip', getClientIp))
+  .use(createRateLimiter(15 * 60 * 1000, 20, 'auth_refresh_token', getTokenRateLimitKey))
   .post(
     '/token/refresh',
     async ({ body, set, request }) => {
       try {
-        const xClient = request.headers.get('x-client')?.toLowerCase();
-        const cookieHeader = request.headers.get('cookie');
+        const xClient = request?.headers ? request.headers.get('x-client')?.toLowerCase() : null;
+        const cookieHeader = request?.headers ? request.headers.get('cookie') : null;
         const cookies = parseCookies(cookieHeader);
         const cookieToken = cookies['refresh_token'];
         const bodyToken = body?.refreshToken;
@@ -788,7 +851,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
             return errorResponse('CSRF_ERROR', "Header 'x-client: web' is required for web cookie refresh");
           }
 
-          const origin = request.headers.get('origin')?.toLowerCase();
+          const origin = request?.headers ? request.headers.get('origin')?.toLowerCase() : null;
           const allowedOrigins = env.CORS_ORIGINS.split(',').map((o) => o.trim().toLowerCase());
 
           if (!origin || !allowedOrigins.includes(origin)) {
@@ -824,10 +887,77 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
         // REUSE DETECTION: If session exists and revoked_at is not null
         if (session && session.revoked_at !== null) {
-          // REVOKE ALL active sessions for this user!
+          const isRotated = session.rotated_at !== null;
+          const isGraceUnused = session.grace_used_at === null;
+          const elapsedSeconds = session.rotated_at ? (Date.now() - session.rotated_at.getTime()) / 1000 : 999999;
+
+          // QUALIFY FOR GRACE PATH: Must be rotated (NOT revoked by logout/theft), grace not consumed yet, and within grace window
+          if (isRotated && isGraceUnused && elapsedSeconds <= env.REFRESH_REUSE_GRACE_SECONDS) {
+            // Mark grace as consumed IMMEDIATELY so it can NEVER be used a second time!
+            await prisma.auth_sessions.update({
+              where: { id: session.id },
+              data: { grace_used_at: new Date() },
+            });
+
+            const user = await prisma.users.findUnique({
+              where: { id: session.user_id },
+            });
+
+            if (!user || user.status === 'frozen' || user.status === 'archived') {
+              if (isWebClient) clearWebRefreshCookie(set);
+              set.status = 403;
+              return errorResponse('ACCOUNT_SUSPENDED', 'Account is suspended or invalid');
+            }
+
+            const newAccessToken = signAccessToken({ sub: user.id, userCode: user.user_code || '' });
+            const newRefreshToken = signRefreshToken({ sub: user.id, userCode: user.user_code || '' });
+
+            const newHash = hashRefreshToken(newRefreshToken);
+            const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+            await prisma.auth_sessions.create({
+              data: {
+                id: crypto.randomUUID(),
+                user_id: user.id,
+                device_id: session.device_id,
+                refresh_token_hash: newHash,
+                ip_address: clientIp,
+                expires_at: newExpiresAt,
+              },
+            });
+
+            if (isWebClient) {
+              setWebRefreshCookie(set, newRefreshToken);
+              return successResponse(
+                {
+                  token: newAccessToken,
+                  accessToken: newAccessToken,
+                },
+                'Token refreshed successfully'
+              );
+            } else {
+              return successResponse(
+                {
+                  token: newAccessToken,
+                  accessToken: newAccessToken,
+                  refreshToken: newRefreshToken,
+                },
+                'Token refreshed successfully'
+              );
+            }
+          }
+
+          // OUTSIDE GRACE WINDOW / DISQUALIFIED (e.g. revoked by logout, revoked by theft, or grace used twice):
+          // REVOKE ALL active sessions AND close grace path on ALL sessions for this user!
+          const theftTime = new Date();
           await prisma.auth_sessions.updateMany({
             where: { user_id: session.user_id, revoked_at: null },
-            data: { revoked_at: new Date() },
+            data: { revoked_at: theftTime },
+          });
+
+          await prisma.auth_sessions.updateMany({
+            where: { user_id: session.user_id, grace_used_at: null },
+            data: { grace_used_at: theftTime },
           });
 
           // Log security event
@@ -863,10 +993,13 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           return errorResponse('ACCOUNT_SUSPENDED', 'Account is suspended or invalid');
         }
 
-        // 3. Rotate token (revoking current session, creating new active session)
+        // 3. Rotate token (revoking current session, setting rotated_at ONLY during normal rotation)
         await prisma.auth_sessions.update({
           where: { id: session.id },
-          data: { revoked_at: new Date() },
+          data: {
+            revoked_at: new Date(),
+            rotated_at: new Date(),
+          },
         });
 
         const newAccessToken = signAccessToken({ sub: user.id, userCode: user.user_code || '' });
@@ -911,6 +1044,10 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       }
     },
     {
+      beforeHandle: [
+        createRateLimiter(env.REFRESH_IP_WINDOW_SECONDS * 1000, env.REFRESH_IP_LIMIT, 'auth_refresh_ip', (req, srv) => getClientIp(req, srv)),
+        createRateLimiter(env.REFRESH_TOKEN_WINDOW_SECONDS * 1000, env.REFRESH_TOKEN_LIMIT, 'auth_refresh_token', (req) => getTokenRateLimitKey(req)),
+      ],
       body: t.Optional(
         t.Object({
           refreshToken: t.Optional(t.String()),

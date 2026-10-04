@@ -414,23 +414,49 @@ export const studentRoutes = new Elysia({ prefix: '/student' })
 
   /**
    * POST /api/v1/student/sos
-   * Trigger emergency SOS alert
+   * Trigger emergency SOS alert (Idempotent, Roommate trigger support, Escalation sequence)
    */
   .post(
     '/sos',
-    async ({ user, body, set }) => {
+    async ({ user, body, set, request }) => {
       try {
-        const { latitude, longitude, source } = body;
+        const { latitude, longitude, source, victimStudentId, idempotencyKey } = body;
+        const key = request.headers.get('idempotency-key') || idempotencyKey || `sos_${user!.id}_${Date.now()}`;
+
+        // Idempotency check: return existing incident if matching key exists
+        const existing = await prisma.sos_incidents.findFirst({
+          where: { idempotency_key: key },
+        });
+
+        if (existing) {
+          return successResponse(
+            {
+              incidentId: existing.id,
+              status: existing.status,
+              createdAt: existing.created_at,
+              isIdempotentReplay: true,
+            },
+            'Emergency SOS already active (Idempotent replay)'
+          );
+        }
+
+        // Roommate trigger support: if source is roommate, assign victim as student_id
+        const targetStudentId = source === 'roommate' && victimStudentId ? victimStudentId : user!.id;
+
+        // Fetch dynamic escalation order from sos_escalation_steps table
+        const escalationSteps = await prisma.sos_escalation_steps.findMany({
+          orderBy: { step_no: 'asc' },
+        });
 
         const incident = await prisma.sos_incidents.create({
           data: {
             id: crypto.randomUUID(),
-            student_id: user!.id,
+            student_id: targetStudentId,
             triggered_by: user!.id,
             source: source || 'button',
             latitude: latitude ? Number(latitude) : null,
             longitude: longitude ? Number(longitude) : null,
-            idempotency_key: `sos_${user!.id}_${Date.now()}`,
+            idempotency_key: key,
             status: 'open',
           },
         });
@@ -439,6 +465,9 @@ export const studentRoutes = new Elysia({ prefix: '/student' })
           {
             incidentId: incident.id,
             status: incident.status,
+            studentId: incident.student_id,
+            triggeredBy: incident.triggered_by,
+            escalationSequence: escalationSteps.map((s) => ({ stepNo: s.step_no, roleId: s.role_id, emergencyDirectoryId: s.emergency_directory_id, waitSeconds: s.wait_seconds })),
             createdAt: incident.created_at,
           },
           'EMERGENCY SOS ALERT TRIGGERED. Warden and Emergency team notified!'
@@ -453,6 +482,8 @@ export const studentRoutes = new Elysia({ prefix: '/student' })
         latitude: t.Optional(t.Number()),
         longitude: t.Optional(t.Number()),
         source: t.Optional(t.Union([t.Literal('button'), t.Literal('shake'), t.Literal('roommate'), t.Literal('faculty'), t.Literal('guard')])),
+        victimStudentId: t.Optional(t.String({ format: 'uuid' })),
+        idempotencyKey: t.Optional(t.String()),
       }),
       detail: {
         tags: ['Student'],

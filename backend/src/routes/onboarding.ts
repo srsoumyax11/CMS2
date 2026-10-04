@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia';
 import { prisma } from '../config/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 import { jwtAuth } from '../middleware/auth';
+import { createRateLimiter } from '../middleware/rate-limit';
 
 export const onboardingRoutes = new Elysia()
   .use(jwtAuth)
@@ -605,6 +606,7 @@ export const onboardingRoutes = new Elysia()
       }
     },
     {
+      beforeHandle: createRateLimiter(15 * 60 * 1000, 5, 'role_request_create'),
       body: t.Object({
         roleCode: t.String(),
         claimedCode: t.Optional(t.String()),
@@ -782,6 +784,7 @@ export const onboardingRoutes = new Elysia()
       }
     },
     {
+      beforeHandle: createRateLimiter(15 * 60 * 1000, 5, 'guardian_link_create'),
       body: t.Object({
         studentAdmissionNo: t.String(),
         studentDob: t.String({ description: 'YYYY-MM-DD' }),

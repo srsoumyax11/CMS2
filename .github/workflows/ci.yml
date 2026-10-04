@@ -1,23 +1,22 @@
-name: Backend CI / CD Pipeline
+name: Monorepo CI Quality Gates
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master, dev ]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main, master, dev ]
 
 jobs:
-  build-and-test:
-    name: Type Check & Run Automated Test Suite
+  verify:
+    name: Typecheck, Lint, Test, Contract & Validate
     runs-on: ubuntu-latest
-
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:15-alpine
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgrespassword
           POSTGRES_DB: campus_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
@@ -26,31 +25,46 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/campus_db?schema=public"
+      JWT_SECRET: "ci-super-secret-jwt-key-min-32-chars-long"
+      PORT: 3000
+      NODE_ENV: test
+      ENABLE_SWAGGER: "true"
+
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Bun Environment
-        uses: oven-sh/setup-bun@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
         with:
-          bun-version: latest
+          version: 9.7.0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install Dependencies
-        working-directory: ./backend
-        run: bun install --frozen-lockfile
+        run: pnpm install
 
-      - name: Generate Prisma Client
-        working-directory: ./backend
-        run: bunx prisma generate
+      - name: Start Live Backend Server
+        run: |
+          cd backend
+          bun install
+          bunx prisma migrate deploy
+          bun run src/index.ts &
+          sleep 5
+          curl -f http://localhost:3000/swagger/json || exit 1
 
-      - name: Verify TypeScript Type Safety
-        working-directory: ./backend
-        run: bunx tsc --noEmit
+      - name: Sync OpenAPI Spec Live
+        run: pnpm api:sync
 
-      - name: Run Full Test Suite
-        working-directory: ./backend
-        env:
-          DATABASE_URL: "postgresql://postgres:postgrespassword@localhost:5432/campus_db?schema=campus"
-          JWT_SECRET: "ci_pipeline_test_jwt_secret_key_32_characters"
-          JWT_REFRESH_SECRET: "ci_pipeline_test_jwt_refresh_secret_key_32_characters"
-        run: bun test
+      - name: Run Full Monorepo Verification (verify script)
+        run: pnpm run verify
+
